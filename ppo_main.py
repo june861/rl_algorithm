@@ -25,6 +25,7 @@ def main(args, env_name, number, seed):
     print("action_dim = {}".format(action_dim))
     print("max_episode_steps = {}".format(args.max_episode_steps))
     print('max_train_steps = {}'.format(args.max_train_steps))
+    print('eval_freq = {}'.format(args.evaluate_freq))
     print(f'=====================================')
 
     evaluate_num = 0  # Record the number of evaluations
