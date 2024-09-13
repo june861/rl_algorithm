@@ -209,7 +209,7 @@ class PPO(object):
         self.actor_optim.zero_grad()
         actor_loss.mean().backward()
         if self.ppo_params['use_grad_clip']:  # Trick 7: Gradient clip
-            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 0.5)
+            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.ppo_params['grad_clip_params'])
         self.actor_optim.step()
 
         v_s = self.critic(states)
@@ -218,21 +218,9 @@ class PPO(object):
         self.critic_optim.zero_grad()
         critic_loss.backward()
         if self.ppo_params['use_grad_clip']:  # Trick 7: Gradient clip
-            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
+            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.ppo_params['grad_clip_params'])
         self.critic_optim.step()
-    
 
-
-
-    def lr_decay(self, total_steps, max_train_steps):
-        """ learning rate decay with linear method"""
-        # Trick 6:learning rate Decay
-        lr_a_now = self.lr_a * (1 - total_steps / max_train_steps)
-        lr_c_now = self.lr_c * (1 - total_steps / max_train_steps)
-        for p in self.actor_optim.param_groups:
-            p['lr'] = lr_a_now
-        for p in self.critic_optim.param_groups:
-            p['lr'] = lr_c_now
     
 
 

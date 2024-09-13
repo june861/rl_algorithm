@@ -89,7 +89,8 @@ def main(args, env_name, number, seed):
 
             # When the number of transitions in buffer reaches batch_size,then update
             if len(replay_buffer) > args.batch_size:
-                for _ in range(args.K_epochs):
+                learn_steps = 1 + len(replay_buffer) / replay_buffer.buffer_capacity
+                for _ in range(learn_steps):
                     agent.learn(replay_buffer = replay_buffer, batch_size = args.batch_size)
                     # 修改agent
                 agent.update_old_net()
@@ -123,7 +124,7 @@ if __name__ == '__main__':
     parser.add_argument("--max_train_steps", type=int, default=int(200), help=" Maximum number of training steps")
     parser.add_argument("--evaluate_freq", type=int, default=10, help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=20, help="Save frequency")
-    parser.add_argument("--batch_size", type=int, default=2048, help="Batch size")
+    parser.add_argument("--batch_size", type=int, default=512, help="Batch size")
     parser.add_argument("--mini_batch_size", type=int, default=64, help="Minibatch size")
     parser.add_argument("--hidden_width", type=int, default=64, help="The number of neurons in hidden layers of the neural network")
     parser.add_argument("--lr_a", type=float, default=3e-4, help="Learning rate of actor")

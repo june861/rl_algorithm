@@ -11,7 +11,7 @@ import numpy as np
 
 class RelayBuffer(object):
     """ 经验放回缓冲区 """
-    def __init__(self,buffer_capacity = 10e8) -> None:
+    def __init__(self,buffer_capacity = 10e6) -> None:
         self.buffer_capacity = buffer_capacity
         self.buffer = []
 
