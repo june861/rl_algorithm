@@ -47,11 +47,7 @@ class KeepMeanStd(object):
             self.S = self.S + (x - old_mean) * (x - self.mean)
             self.std = np.sqrt(self.S / self.n)
         
-    def clear(self):
-        self.S = np.zeros(shape = self.shape)
-        self.mean = np.zeros(shape = self.shape)
-        self.std = np.sqrt(self.S)
-        self.n = 0        
+
 
 
 def adv_norm(adv, epslion=1e-5):

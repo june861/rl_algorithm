@@ -12,7 +12,7 @@ import torch
 import os
 import argparse
 import numpy as np
-import gymnasium as gym
+import gym
 from torch.utils.tensorboard import SummaryWriter
 from pg.pg import PG
 

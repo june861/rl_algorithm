@@ -1,0 +1,31 @@
+{
+  "os": "Windows-10-10.0.22621-SP0",
+  "python": "3.9.19",
+  "startedAt": "2024-09-14T02:30:43.879949Z",
+  "program": "f:\\Repository\\optimizer_algorithm\\test_frame.ipynb",
+  "git": {
+    "remote": "git@github.com:june861/optimizer_algorithm.git",
+    "commit": "84a8fad1900ce023443c3143708fb44c573c7491"
+  },
+  "email": "overtheriver861@gmail.com",
+  "root": "f:\\Repository\\optimizer_algorithm",
+  "host": "DESKTOP-5L8V8DT",
+  "username": "LWJ",
+  "executable": "d:\\Anaconda\\envs\\py39\\python.exe",
+  "codePathLocal": "test_frame.ipynb",
+  "cpu_count": 4,
+  "cpu_count_logical": 8,
+  "disk": {
+    "/": {
+      "total": "512092008448",
+      "used": "157951541248"
+    }
+  },
+  "memory": {
+    "total": "17008988160"
+  },
+  "cpu": {
+    "count": 4,
+    "countLogical": 8
+  }
+}

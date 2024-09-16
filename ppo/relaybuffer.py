@@ -7,7 +7,9 @@
 '''
 
 import random
+import torch
 import numpy as np
+from copy import deepcopy
 
 class RelayBuffer(object):
     """ 经验放回缓冲区 """
@@ -15,7 +17,9 @@ class RelayBuffer(object):
         self.buffer_capacity = buffer_capacity
         self.buffer = []
 
-    def add(self, state, action, reward, next_state, a_logprob, dw, done,must_add = True):
+    def add(self, state, action, reward, next_state, a_logprob, dw,done, must_add = True):
+        # action , a_logprob = np.array([action]), np.array([a_logprob])
+        # reward, dw, done = np.array([reward]), np.array([dw]), np.array([done])
         data = (state, action, reward, next_state, a_logprob, dw, done)
         if len(self.buffer) < self.buffer_capacity:
             self.buffer.append(data)
@@ -28,21 +32,11 @@ class RelayBuffer(object):
                 return 1
         # 数据写入缓冲区失败
         return 0
-        
-    def sample(self, mini_batch_size):
-        batch = random.sample(self.buffer, min(len(self.buffer), mini_batch_size))
-        state, action, reward, next_state, a_logprob, dw, done = map(np.array, zip(*batch))
-        return state, action, reward, next_state, a_logprob, dw, done
-        # data_lengths = len(self.buffer)
-        # # 获取每个batch中数据在self.buffer中的下标
-        # batch_start = np.arange(0, data_lengths, mini_batch_size)
-        # # 生成indices = []
-        # indices = np.arange(data_lengths, dtype=np.int64)
-        # # 打乱下标
-        # np.random.shuffle(indices)
-        # mini_batches = [indices[i:i + mini_batch_size] for i in batch_start]
 
-        # return mini_batches 
+    def sample(self):
+        # batch = random.sample(self.buffer, min(len(self.buffer), batch_size))
+        state, action, reward, next_state, a_logprob, dw, done = map(np.array, zip(*self.buffer))
+        return state, action, reward, next_state, a_logprob, dw, done
 
     def clear(self):
         """ 清除缓冲区 """
