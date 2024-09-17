@@ -8,7 +8,7 @@
 @description   :   实现PG算法框架
 '''
 
-import gymnasium as gym
+
 import numpy as np
 import torch
 import torch.nn as nn

@@ -69,7 +69,7 @@ def main(args, number, seed):
     val_env = gym.make(args.env_name)
     eval_env = gym.make(args.env_name, render_mode = "human")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cpu')
+    # device = torch.device('cpu')
 
     state_dim = envs.single_observation_space.shape[0]
     action_dim = envs.single_action_space.n
@@ -158,7 +158,7 @@ def main(args, number, seed):
                 writer.add_scalar(tag = f'train_actor_loss_{args.env_name}', scalar_value = a_loss, global_step = total_steps)
                 writer.add_scalar(tag = f'train_critic_loss_{args.env_name}', scalar_value = c_loss, global_step = total_steps)
         if train_step % args.evaluate_freq == 0:
-            eval_times = 10
+            eval_times = 5
             round_count = 0
             val_reward = 0
             for k in range(eval_times):
@@ -174,15 +174,15 @@ def main(args, number, seed):
                     state_, reward, done,trun, _ = val_env.step(action)
                     episode_reward += reward
                     state = state_
-                val_reward += (episode_reward / step)
+                val_reward += episode_reward
                 round_count += step
+            print(f'step is {train_step}, validation reward is {val_reward / eval_times}, every round count is {round_count / eval_times}')
             writer.add_scalar(tag = f'validation_reward_{args.env_name}', scalar_value = val_reward / eval_times, global_step = evaluate_num)
             writer.add_scalar(tag = f'validation_rounds_{args.env_name}', scalar_value = round_count / eval_times, global_step = evaluate_num)
             evaluate_num += 1
 
     # save model, can choice
-    if args.save_model:
-        agent.save_checkpoint(only_net = False)
+    agent.save_checkpoint(only_net = False)
 
     # 测试模型
     round_count = 0
@@ -210,15 +210,15 @@ if __name__ == '__main__':
     parser.add_argument("--env_num",type=int,default=5,help="The number of envs that are activated")
     parser.add_argument("--use_multiprocess",type=int,default=1,help="use multi-process to generated frame data.")
     # training variable setting
-    parser.add_argument("--max_train_steps", type=int, default=50000, help=" Maximum number of training steps")
+    parser.add_argument("--max_train_steps", type=int, default=20000, help=" Maximum number of training steps")
     parser.add_argument("--per_batch_steps", type=int, default=200, help="max step in a round.")
     parser.add_argument("--evaluate_freq", type=int, default=500, help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=20, help="Save frequency")
     parser.add_argument("--batch_size", type=int, default=2048, help="Batch size")
     parser.add_argument("--mini_batch_size", type=int, default=64, help="Minibatch size")
     parser.add_argument("--hidden_width", type=int, default=64, help="The number of neurons in hidden layers of the neural network")
-    parser.add_argument("--lr_a", type=float, default=1e-3, help="Learning rate of actor")
-    parser.add_argument("--lr_c", type=float, default=1e-2, help="Learning rate of critic")
+    parser.add_argument("--lr_a", type=float, default=3e-5, help="Learning rate of actor")
+    parser.add_argument("--lr_c", type=float, default=3e-5, help="Learning rate of critic")
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor")
     parser.add_argument("--lamda", type=float, default=0.95, help="GAE parameter")
     parser.add_argument("--epsilon", type=float, default=0.2, help="PPO clip parameter")

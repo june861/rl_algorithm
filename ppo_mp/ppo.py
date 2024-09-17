@@ -13,7 +13,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 from time import time
-
+from ppo_mp.trick import orthogonal_initialization
 from copy import deepcopy
 from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 from torch.distributions import Categorical
@@ -47,8 +47,6 @@ PPO算法是一种基于Actor-Critic的架构， 它的代码组成和A2C架构�
                         ⬆                                                                                                                ⬇
                         ⬆                                                                                                                ⬇
                         ⬆⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅ backbard ⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬇
-同时将会实现PPO的一些技巧:
-
 """
 
 
@@ -62,7 +60,12 @@ class Actor(nn.Module):
         output_dims = hidden_dims + [act_dim]
         self.actor = []
         for index, (in_d, out_d) in enumerate(zip(input_dims,output_dims)):
-            self.actor.append(nn.Linear(in_d, out_d))
+            layer = nn.Linear(in_d, out_d)
+            if index != len(input_dims) - 1:
+                orthogonal_initialization(layer = layer)
+            else:
+                orthogonal_initialization(layer = layer, gain = 0.1)
+            self.actor.append(layer)
             if index != len(input_dims) - 1:
                 if use_tanh:
                     self.actor.append(nn.Tanh())
@@ -85,7 +88,12 @@ class Critic(nn.Module):
         output_dims = hidden_dims + [act_dim]
         self.critic = []
         for index,(in_d, out_d) in enumerate(zip(input_dims,output_dims)):
-            self.critic.append(nn.Linear(in_d, out_d))
+            layer = nn.Linear(in_d, out_d)
+            if index != len(input_dims) - 1:
+                orthogonal_initialization(layer = layer)
+            else:
+                orthogonal_initialization(layer = layer, gain = 0.1)
+            self.critic.append(layer)
             if index != len(input_dims) - 1:
                 if use_tanh:
                     self.critic.append(nn.Tanh())

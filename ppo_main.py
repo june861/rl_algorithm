@@ -11,16 +11,17 @@ from ppo.ppo import PPO
 from share_func import clear_folder
 def main(args, env_name, number, seed):
     env = gym.make(env_name)
+    eval_env = gym.make(env_name, render_mode = "human")
     # Set random seed
     np.random.seed(seed)
     torch.manual_seed(seed)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    state_dim = env.observation_space.shape[0]
+    state_dim = env.observation_space.shape[0] 
     action_dim = env.action_space.n
     layer_nums = 3
-    hidden_dims = [128,128]
+    hidden_dims = [64,64]
     args.max_episode_steps = env._max_episode_steps  # Maximum number of steps per episode
     print(f'======== run ppo algorithm =========')
     print("env = {}".format(env_name))
@@ -51,10 +52,10 @@ def main(args, env_name, number, seed):
 
             # trick params
             'off_policy' : False, # use off-policy or on-policy
-            'use_buffer' : False, # use buffer to store or not
+            'use_buffer' : False, # use buffer to store or not  
             'use_tanh' : False, # use tanh activate func or ReLU func
             'use_adv_norm' : True, # use advantage normalization
-            'use_grad_clip' : True, # use grad clip in model params.
+            'use_grad_clip' : False, # use grad clip in model params.
             'grad_clip_params': 0.5,
             'entropy_coef': args.entropy_coef,
             'device': device,        
@@ -105,8 +106,8 @@ def main(args, env_name, number, seed):
         # When the number of transitions in buffer reaches batch_size,then update
         if len(replay_buffer) >= args.batch_size:
             # print(f'step is {total_steps}, get in train, now buffer len is {len(replay_buffer)}')
-            learn_steps = 1 + int(len(replay_buffer) / replay_buffer.buffer_capacity)
-            learn_steps = 20
+            learn_steps = int(ppo_params['batch_size'] / ppo_params['mini_batch_size'])
+            # learn_steps = 1
             a_total_loss, c_total_loss = 0.0, 0.0
             for _ in range(learn_steps):
                 a_loss, c_loss = agent.learn(replay_buffer = replay_buffer, batch_size = args.batch_size)
@@ -120,7 +121,7 @@ def main(args, env_name, number, seed):
             # agent.update_old_net()
             replay_buffer.clear()
 
-        if args.use_lr_decay :
+        if args.use_lr_decay  :
             cur_lr_a = agent.ppo_params['lr_a']
             cur_lr_c = agent.ppo_params['lr_c']
             new_lr_a = lr_decay(agent.actor_optim, cur_step = total_steps, max_step = args.max_train_steps, cur_lr = cur_lr_a)
@@ -130,7 +131,7 @@ def main(args, env_name, number, seed):
 
         # Evaluate the policy every 'evaluate_freq' steps
         if total_steps % args.evaluate_freq == 0:
-            times = 10
+            times = 1
             evaluate_reward = 0
             total_frame = 0
             for j in range(times):
@@ -158,18 +159,37 @@ def main(args, env_name, number, seed):
             #     np.save('./data_train/PPO_discrete_env_{}_number_{}_seed_{}.npy'.format(env_name, number, seed), np.array(evaluate_rewards))
     writer.close()
 
+    # 测试模型
+    round_count = 0
+    while True:
+        round_count += 1
+        state, _ = eval_env.reset()
+        eval_env.render()
+        done = False
+        episode_reward = 0.0
+        step = 0
+        while not done:
+            step += 1
+            action, _  = agent.select_action(state, eval_mode = True)  # We use the deterministic policy during the evaluating
+            state, reward, done,trun, _ = eval_env.step(action)
+            if done: 
+                break
+            episode_reward += reward
+        print(f'round{round_count}: total step is {step}, total reward is {episode_reward}')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for PPO")
-    parser.add_argument("--max_train_steps", type=int, default=int(500), help=" Maximum number of training steps")
-    parser.add_argument("--evaluate_freq", type=int, default=10, help="Evaluate the policy every 'evaluate_freq' steps")
-    parser.add_argument("--save_freq", type=int, default=20, help="Save frequency")
+    parser.add_argument("--max_train_steps", type=int, default=int(200), help=" Maximum number of training steps")
+    parser.add_argument("--evaluate_freq", type=int, default=20, help="Evaluate the policy every 'evaluate_freq' steps")
+    parser.add_argument("--save_freq", type=int, default=20,  help="Save frequency")
     parser.add_argument("--batch_size", type=int, default=4096, help="Batch size")
-    parser.add_argument("--mini_batch_size", type=int, default=128, help="Minibatch size")
+    parser.add_argument("--mini_batch_size", type=int, default=512, help="Minibatch size")
     parser.add_argument("--hidden_width", type=int, default=64, help="The number of neurons in hidden layers of the neural network")
-    parser.add_argument("--lr_a", type=float, default=3e-4, help="Learning rate of actor")
-    parser.add_argument("--lr_c", type=float, default=3e-4, help="Learning rate of critic")
-    parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor")
-    parser.add_argument("--lamda", type=float, default=0.95, help="GAE parameter")
+    parser.add_argument("--lr_a", type=float, default=1e-3, help="Learning rate of actor")
+    parser.add_argument("--lr_c", type=float, default=1e-4, help="Learning rate of critic")
+    parser.add_argument("--gamma", type=float, default=0.98, help="Discount factor")
+    parser.add_argument("--lamda", type=float, default=1.0, help="GAE parameter")
     parser.add_argument("--epsilon", type=float, default=0.2, help="PPO clip parameter")
     parser.add_argument("--K_epochs", type=int, default=10, help="PPO parameter")
     parser.add_argument("--use_adv_norm", type=bool, default=True, help="Trick 1:advantage normalization") 

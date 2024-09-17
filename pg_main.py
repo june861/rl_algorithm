@@ -15,7 +15,7 @@ import numpy as np
 import gym
 from torch.utils.tensorboard import SummaryWriter
 from pg.pg import PG
-
+from share_func import clear_folder
 
 
 ## TEST CODE ##
@@ -25,12 +25,14 @@ def main(args,pid,seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    env = gym.make(args.env_name,  render_mode = args.render_mode)
+    env = gym.make(args.env_name)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     device = torch.device('cpu')
     max_iter = args.max_iter
     max_step = args.max_step
-    writer = SummaryWriter(log_dir='runs/PG_{}_number_seed_{}'.format(args.env_name,pid,seed))
+    log_dir = 'runs/PG_{}_number_seed_{}'.format(args.env_name,pid,seed)
+    clear_folder(log_dir)
+    writer = SummaryWriter(log_dir=log_dir)
 
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
@@ -59,7 +61,7 @@ def main(args,pid,seed):
             agent.loss = []
         train_reward.append(total_reward)
         # Test every 100 episodes
-        if (i+1) % 5 == 0:
+        if (i+1) % 1000 == 0:
             times = 10
             total_reward = 0
             for k in range(times):
@@ -79,19 +81,21 @@ def main(args,pid,seed):
     if args.render_mode == "human":
         env.render()
     done = False
+    total_step = 0
     total_reward += 0
     while not done:
+        total_step += 1
         action = agent.select_action(state = state)
         next_state, reward, done, truncation, _ = env.step(action)
         total_reward += reward
         if done:
             break
-    print(f'test stage: reward is {total_reward}')
+    print(f'test stage: step is {total_step}, reward is {total_reward}')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for PPO")
-    parser.add_argument('--max_iter', type = int, default = 1000, help = "The maximum number of rounds")
+    parser.add_argument('--max_iter', type = int, default = 50000, help = "The maximum number of rounds")
     parser.add_argument('--max_step', type = int, default = 1000, help = "The maximum number of moves per round")
     parser.add_argument('--env_name', type = str, default = 'CartPole-v1', help = "which env used")
     parser.add_argument('--render_mode', type = str, default = 'human', help = "render mode choosen")
