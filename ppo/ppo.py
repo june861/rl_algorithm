@@ -178,8 +178,8 @@ class PPO(object):
         adv = []
         gae = 0
         with torch.no_grad():
-            value = self.critic(states)
-            value_ = self.critic(next_states)
+            value = self.critic(states).squeeze(1)
+            value_ = self.critic(next_states).squeeze(1)
             deltas = rewards + self.ppo_params['gamma'] * (1.0 - dones) * value_ - value
             v_target = rewards + self.ppo_params['gamma'] * (1.0 - dones) * value_
             for delta, done in zip(reversed(deltas.cpu().flatten().numpy()), reversed(dones.cpu().flatten().numpy())):
@@ -191,7 +191,7 @@ class PPO(object):
             if self.ppo_params['use_adv_norm']:  # Trick 1:advantage normalization
                 adv = ((adv - adv.mean()) / (adv.std() + 1e-8))
 
-        return adv, v_target
+        return adv, v_target.unsqueeze(1)
 
     def learn(self, replay_buffer, batch_size):
         """ 训练参数 """
@@ -224,7 +224,7 @@ class PPO(object):
             # shape is (batch_size, 1)
             a_logprob_now = dist_now.log_prob(action.squeeze()).view(-1, 1)  
             # a/b=exp(log(a)-log(b)), shape is (batch_size, 1)
-            ratios = torch.exp(a_logprob_now - a_logprob)
+            ratios = torch.exp(a_logprob_now - a_logprob.unsqueeze(1))
             surr1 = ratios * adv  
             surr2 = torch.clamp(ratios, 1 - self.ppo_params['clip_param'], 1 + self.ppo_params['clip_param']) * adv
             actor_loss = - torch.min(surr1, surr2) - self.ppo_params['entropy_coef'] * dist_entropy  # shape(mini_batch_size X 1)
