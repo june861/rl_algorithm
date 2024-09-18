@@ -289,7 +289,8 @@ class PPO(object):
                 # Value loss
                 newvalue = newvalue.view(-1)
                 self.critic_optim.zero_grad()
-                critic_loss = 0.5 * ((newvalue - b_returns[index]) ** 2).mean()
+                critic_loss = F.mse_loss(newvalue, b_returns[index])
+                # critic_loss = 0.5 * ((newvalue - b_returns[index]) ** 2).mean()
                 critic_loss.backward()
                 if self.ppo_params['use_grad_clip']:  # Trick 7: Gradient clip
                     nn.utils.clip_grad_norm_(self.critic.parameters(), self.ppo_params['grad_clip_params'])
