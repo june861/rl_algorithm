@@ -36,18 +36,18 @@ def build_ppo_param(args, device):
 
             # trick params
 
-            'off_policy' : False, # use off-policy or on-policy
-            'use_buffer' : True, # use buffer to store or not
-            "use_ppo_clip":False , # use ppo clip param annealing
-            "use_adv_norm" : True, # use advantage normalization
-            "use_state_norm" : False, # use state normalization
-            "use_reward_norm" : False, # use reward normalization
-            'use_tanh' : False, # use tanh activate func or ReLU func
-            'use_adv_norm' : False, # use advantage normalization
-            'use_grad_clip' : True, # use grad clip in model params.
-            'use_gae': True,
-            'grad_clip_params': 0.5,
-            'use_lr_decay': True,
+            'off_policy' : args.use_off_policy, # use off-policy or on-policy
+            'use_buffer' : args.use_buffer, # use buffer to store or not
+            "use_ppo_clip":args.use_ppo_clip , # use ppo clip param annealing
+            "use_adv_norm" : args.use_adv_norm, # use advantage normalization
+            "use_state_norm" : args.use_state_norm, # use state normalization
+            "use_reward_norm" : args.use_reward_norm, # use reward normalization
+            'use_tanh' : args.use_tanh, # use tanh activate func or ReLU func
+            'use_adv_norm' : args.use_adv_norm, # use advantage normalization
+            'use_grad_clip' : args.use_grad_clip, # use grad clip in model params.
+            'use_gae': args.use_gae,
+            'grad_clip_params': args.grad_clip_param,
+            'use_lr_decay': args.use_lr_decay,
             'entropy_coef': args.entropy_coef,
             'device': device,        
     }
@@ -62,7 +62,7 @@ def main(args, number, seed):
 
     # build envs
     train_envs = [ make_env(env_name = args.env_name, seed = seed,idx = i, run_name = f'{args.env_name}_video{i}') for i in range(args.env_num) ]
-    if args.use_multiprocess == 1:
+    if args.use_multiprocess:
         envs = gym.vector.AsyncVectorEnv(train_envs)
     else:
         envs = gym.vector.SyncVectorEnv(train_envs)
@@ -99,7 +99,7 @@ def main(args, number, seed):
             )
     # monitor tools init
     if args.monitor == "wandb":
-        wandb.init(project = "my_ppo")
+        wandb.init(project = "ppo_mp")
     else:
         # clear dir or make dir
         tensorboard_logdir = 'runs/PPO_mp_{}_seed_{}'.format(args.env_name, number, seed)
@@ -149,12 +149,11 @@ def main(args, number, seed):
                             dones = done.to(device),
                             update_epoch = 10
                         )
-
-        if args.monitor == "wandb":
-            pass
-        elif args.monitor == "tensorboard":
-            for index, (a_loss, c_loss) in enumerate(loss):
-                total_steps += 1
+        for index, (a_loss, c_loss) in enumerate(loss):
+            total_steps += 1
+            if args.monitor == "wandb":
+                wandb.log({'actor_loss': a_loss, 'critic_loss': c_loss})
+            elif args.monitor == "tensorboard":
                 writer.add_scalar(tag = f'train_actor_loss_{args.env_name}', scalar_value = a_loss, global_step = total_steps)
                 writer.add_scalar(tag = f'train_critic_loss_{args.env_name}', scalar_value = c_loss, global_step = total_steps)
         if train_step % args.evaluate_freq == 0:
@@ -177,53 +176,61 @@ def main(args, number, seed):
                 val_reward += episode_reward
                 round_count += step
             print(f'step is {train_step}, validation reward is {val_reward / eval_times}, every round count is {round_count / eval_times}')
-            writer.add_scalar(tag = f'validation_reward_{args.env_name}', scalar_value = val_reward / eval_times, global_step = evaluate_num)
-            writer.add_scalar(tag = f'validation_rounds_{args.env_name}', scalar_value = round_count / eval_times, global_step = evaluate_num)
+            if args.monitor == "wandb":
+                wandb.log({'eval_reward':val_reward / eval_times, "eval_steps": (round_count / eval_times)})
+            else:
+                writer.add_scalar(tag = f'validation_reward_{args.env_name}', scalar_value = val_reward / eval_times, global_step = evaluate_num)
+                writer.add_scalar(tag = f'validation_rounds_{args.env_name}', scalar_value = round_count / eval_times, global_step = evaluate_num)
             evaluate_num += 1
 
     # save model, can choice
     agent.save_checkpoint(only_net = False)
 
-    # 测试模型
-    round_count = 0
-    while True:
-        round_count += 1
-        state, _ = eval_env.reset()
-        eval_env.render()
-        done = False
-        episode_reward = 0.0
-        step = 0
-        while not done:
-            step += 1
-            action, _  = agent.select_action(state, eval_mode = True)  # We use the deterministic policy during the evaluating
-            state, reward, done,trun, _ = eval_env.step(action)
-            if done: 
-                break
-            episode_reward += reward
-        print(f'round{round_count}: total step is {step}, total reward is {episode_reward}, every step reward is {episode_reward / step}')            
+    # # 测试模型
+    # round_count = 0
+    # while True:
+    #     round_count += 1
+    #     state, _ = eval_env.reset()
+    #     eval_env.render()
+    #     done = False
+    #     episode_reward = 0.0
+    #     step = 0
+    #     while not done:
+    #         step += 1
+    #         action, _  = agent.select_action(state, eval_mode = True)  # We use the deterministic policy during the evaluating
+    #         state, reward, done,trun, _ = eval_env.step(action)
+    #         if done: 
+    #             break
+    #         episode_reward += reward
+    #     print(f'round{round_count}: total step is {step}, total reward is {episode_reward}, every step reward is {episode_reward / step}')            
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for PPO")
     # env variable setting
     parser.add_argument("--env_name",type=str,default="CartPole-v1",help="The Env Name of Gym")
-    parser.add_argument("--env_num",type=int,default=5,help="The number of envs that are activated")
-    parser.add_argument("--use_multiprocess",type=int,default=1,help="use multi-process to generated frame data.")
+    parser.add_argument("--env_num",type=int,default=100,help="The number of envs that are activated")
+    parser.add_argument("--use_multiprocess",type=bool,default=False,help="use multi-process to generated frame data.")
     # training variable setting
-    parser.add_argument("--max_train_steps", type=int, default=20000, help=" Maximum number of training steps")
-    parser.add_argument("--per_batch_steps", type=int, default=200, help="max step in a round.")
-    parser.add_argument("--evaluate_freq", type=int, default=500, help="Evaluate the policy every 'evaluate_freq' steps")
+    parser.add_argument("--max_train_steps", type=int, default=50000, help=" Maximum number of training steps")
+    parser.add_argument("--per_batch_steps", type=int, default=500, help="max step in a round.")
+    parser.add_argument("--evaluate_freq", type=int, default=20, help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=20, help="Save frequency")
-    parser.add_argument("--batch_size", type=int, default=2048, help="Batch size")
-    parser.add_argument("--mini_batch_size", type=int, default=64, help="Minibatch size")
+    parser.add_argument("--batch_size", type=int, default=4096, help="Batch size")
+    parser.add_argument("--mini_batch_size", type=int, default=128, help="Minibatch size")
     parser.add_argument("--hidden_width", type=int, default=64, help="The number of neurons in hidden layers of the neural network")
-    parser.add_argument("--lr_a", type=float, default=3e-5, help="Learning rate of actor")
-    parser.add_argument("--lr_c", type=float, default=3e-5, help="Learning rate of critic")
+    parser.add_argument("--lr_a", type=float, default=5e-4, help="Learning rate of actor")
+    parser.add_argument("--lr_c", type=float, default=1e-4, help="Learning rate of critic")
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor")
     parser.add_argument("--lamda", type=float, default=0.95, help="GAE parameter")
     parser.add_argument("--epsilon", type=float, default=0.2, help="PPO clip parameter")
-    parser.add_argument("--K_epochs", type=int, default=10, help="PPO parameter")
+    # some setting
+    parser.add_argument("--use_off_policy",type=bool,default=False,help="PPO use off-policy or on-policy")
+    parser.add_argument("--use_buffer",type=bool,default=True,help="use buffer to store frame datas")
+    parser.add_argument("--use_gae",type=bool,default=True,help="whether use gae function to cal adv")
+    parser.add_argument("--grad_clip_param",type=float,default=0.5,help="parameters for model grad clip")
     # training trcik setting
+    
     parser.add_argument("--use_adv_norm", type=bool, default=True, help="Trick 1:advantage normalization")
     parser.add_argument("--use_state_norm", type=bool, default=True, help="Trick 2:state normalization")
     parser.add_argument("--use_reward_norm", type=bool, default=False, help="Trick 3:reward normalization")
@@ -234,6 +241,7 @@ if __name__ == '__main__':
     parser.add_argument("--use_orthogonal_init", type=bool, default=True, help="Trick 8: orthogonal initialization")
     parser.add_argument("--set_adam_eps", type=float, default=True, help="Trick 9: set Adam epsilon=1e-5")
     parser.add_argument("--use_tanh", type=float, default=True, help="Trick 10: tanh activation function")
+    parser.add_argument("--use_ppo_clip",type=bool,default=True,help="Trick 11: use ppo param to clip")
     # monitor tools setting
     parser.add_argument("--monitor",type=str,default="tensorboard",choices=["tensorboard","wandb"],help="use Dynamic tools to monitor train process")
 

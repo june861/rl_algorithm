@@ -76,7 +76,7 @@ class Actor(nn.Module):
     def forward(self,state):
         """ actor网络输出动作的概率 """
         out = self.actor(state)
-        a_prob = torch.softmax(out, dim = 0) 
+        a_prob = torch.softmax(out, dim = 1) 
         return a_prob
 
 
@@ -150,12 +150,12 @@ class PPO(object):
         if self.ppo_params['off_policy']:
             self.actor_old = deepcopy(self.actor).to(self.device)
         # define optimizer
-        self.actor_optim = optim.Adam(params = self.actor.parameters(), lr = self.ppo_params['lr_a'])
-        self.critic_optim = optim.Adam(params  = self.critic.parameters(), lr = self.ppo_params['lr_c'])
+        self.actor_optim = optim.AdamW(params = self.actor.parameters(), lr = self.ppo_params['lr_a'])
+        self.critic_optim = optim.AdamW(params  = self.critic.parameters(), lr = self.ppo_params['lr_c'])
 
     def select_action(self, state, eval_mode = False):
         """ 选择动作 """
-        state = torch.Tensor(state).to(self.device)
+        state = torch.Tensor(state).to(self.device).unsqueeze(0)
         with torch.no_grad():
             if self.ppo_params['off_policy'] and eval_mode == False:
                 a_probs = self.actor_old(state).cpu()
@@ -189,7 +189,7 @@ class PPO(object):
             adv = torch.tensor(adv, dtype=torch.float).to(self.device).view(-1, 1)
             # v_target = rewards + self.ppo_params['gamma'] * (1.0 - dones) * value_
             if self.ppo_params['use_adv_norm']:  # Trick 1:advantage normalization
-                adv = ((adv - adv.mean()) / (adv.std() + 1e-5))
+                adv = ((adv - adv.mean()) / (adv.std() + 1e-8))
 
         return adv, v_target
 
@@ -212,7 +212,7 @@ class PPO(object):
         actor_total_loss, critic_total_loss = 0.0, 0.0
         step = 0
 
-        for index in BatchSampler((range(self.ppo_params['batch_size'])), self.ppo_params['mini_batch_size'], False):
+        for index in BatchSampler(SubsetRandomSampler(range(self.ppo_params['batch_size'])), self.ppo_params['mini_batch_size'], True):
             state, next_state, reward, dw, done = states[index], next_states[index], rewards[index], batch_dw[index], dones[index]
             # state = (state - state.mean()) / (state.std() + 1e-8)
             action, a_logprob = actions[index], a_logprobs[index]                                                                                                    
@@ -227,8 +227,9 @@ class PPO(object):
             ratios = torch.exp(a_logprob_now - a_logprob)
             surr1 = ratios * adv  
             surr2 = torch.clamp(ratios, 1 - self.ppo_params['clip_param'], 1 + self.ppo_params['clip_param']) * adv
-            # actor_loss = - torch.min(surr1, surr2) - self.ppo_params['entropy_coef'] * dist_entropy  # shape(mini_batch_size X 1)
-            actor_loss = - torch.min(surr1, surr2)
+            actor_loss = - torch.min(surr1, surr2) - self.ppo_params['entropy_coef'] * dist_entropy  # shape(mini_batch_size X 1)
+            # actor_loss = torch.max(-surr1, -surr2).mean()
+            # actor_loss = - torch.min(surr1, surr2)
             # Update actor
             self.actor_optim.zero_grad()
             actor_loss.mean().backward()

@@ -76,7 +76,7 @@ class Actor(nn.Module):
     def forward(self,state):
         """ actor网络输出动作的概率 """
         out = self.actor(state)
-        a_prob = torch.softmax(out, dim = 0) 
+        a_prob = torch.softmax(out, dim = 1) 
         return a_prob
 
 
@@ -156,8 +156,8 @@ class PPO(object):
         if self.ppo_params['off_policy']:
             self.actor_old = deepcopy(self.actor).to(self.device)
         # define optimizer
-        self.actor_optim = optim.Adam(params = self.actor.parameters(), lr = self.ppo_params['lr_a'])
-        self.critic_optim = optim.Adam(params  = self.critic.parameters(), lr = self.ppo_params['lr_c'])
+        self.actor_optim = optim.AdamW(params = self.actor.parameters(), lr = self.ppo_params['lr_a'])
+        self.critic_optim = optim.AdamW(params  = self.critic.parameters(), lr = self.ppo_params['lr_c'])
 
     def select_action(self, state, eval_mode = False, renturn_entropy = False):
         """ select action
@@ -282,6 +282,8 @@ class PPO(object):
                 self.actor_optim.zero_grad()
                 actor_loss = torch.max(surr1, surr2).mean() - self.ppo_params['entropy_coef'] * entropy_loss
                 actor_loss.backward()
+                if self.ppo_params['use_grad_clip']:  # Trick 7: Gradient clip
+                    nn.utils.clip_grad_norm_(self.actor.parameters(), self.ppo_params['grad_clip_params'])
                 self.actor_optim.step()
 
                 # Value loss
@@ -289,6 +291,8 @@ class PPO(object):
                 self.critic_optim.zero_grad()
                 critic_loss = 0.5 * ((newvalue - b_returns[index]) ** 2).mean()
                 critic_loss.backward()
+                if self.ppo_params['use_grad_clip']:  # Trick 7: Gradient clip
+                    nn.utils.clip_grad_norm_(self.critic.parameters(), self.ppo_params['grad_clip_params'])
                 self.critic_optim.step()
 
                 actor_total_loss += actor_loss.detach().cpu().numpy().item()

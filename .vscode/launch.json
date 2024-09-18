@@ -8,28 +8,25 @@
             "name": "Python Run: ppo_mp_main",
             "type": "debugpy",
             "request": "launch",
-            "program": "F:\\Repository\\optimizer_algorithm\\ppo_mp_main.py",
+            "program": "${workspaceFolder}/ppo_mp_main.py",
             "console": "integratedTerminal",
-            // "args": [
-            //     "--batch_size", "8",
-            //     "--K_epochs", "10",
-            //     "--evaluate_freq", "1",
-            //     "--max_train_steps", "10"
-            // ]
-        }
-
+            "args": [
+                "--batch_size", "8",
+                "--evaluate_freq", "1",
+                "--max_train_steps", "100"
+            ]
+        },
         {
             "name": "Python Run: ppo_main.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "F:\\Repository\\optimizer_algorithm\\ppo_main.py",
+            "program": "${workspaceFolder}/ppo_main.py",
             "console": "integratedTerminal",
-            // "args": [
-            //     "--batch_size", "8",
-            //     "--K_epochs", "10",
-            //     "--evaluate_freq", "1",
-            //     "--max_train_steps", "10"
-            // ]
+            "args": [
+
+                "--evaluate_freq", "1",
+                "--max_train_steps", "100"
+            ]
         }
     ]
 }
