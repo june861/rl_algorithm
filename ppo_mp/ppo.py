@@ -171,6 +171,9 @@ class PPO(object):
             _numpy.ndarray_ : return action prob.
         """
         state = torch.Tensor(state).to(self.device)
+        # Ascend the dimension to ensure that Torch.Softmax can run correctly
+        if len(state.shape) == 1:
+            state = state.unsqueeze(0)
         with torch.no_grad():
             if self.ppo_params['off_policy'] and eval_mode == False:
                 a_probs = self.actor_old(state).cpu()
@@ -278,9 +281,9 @@ class PPO(object):
                 # Policy loss
                 surr1 = -mb_advantages * ratio
                 surr2 = -mb_advantages * torch.clamp(ratio, 1 - self.ppo_params['use_ppo_clip'], 1 + self.ppo_params['use_ppo_clip'])
-                entropy_loss = entropy.mean()
                 self.actor_optim.zero_grad()
-                actor_loss = torch.max(surr1, surr2).mean() - self.ppo_params['entropy_coef'] * entropy_loss
+                # actor_loss = (torch.max(surr1, surr2) - self.ppo_params['entropy_coef'] * entropy).mean()
+                actor_loss = torch.max(surr1, surr2).mean()
                 actor_loss.backward()
                 if self.ppo_params['use_grad_clip']:  # Trick 7: Gradient clip
                     nn.utils.clip_grad_norm_(self.actor.parameters(), self.ppo_params['grad_clip_params'])

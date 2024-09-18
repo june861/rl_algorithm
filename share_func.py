@@ -7,8 +7,9 @@
 import os
 import gym
 import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib import animation
 
-from ppo.trick import state_norm
 def clear_folder(folder_path, rm_file = True, rm_dir = True):
     """ remove dirs and files from the folder_path.
 
@@ -97,3 +98,50 @@ def generate_frame_data(env, env_index, agent, lock, relay_buffer, capacity):
 
 def draw_metric():
     pass
+
+
+
+def display_frames_as_gif(frames):
+    """ save frame data to gif
+
+    Args:
+        frames (_list_): frame data.
+    """
+    patch = plt.imshow(frames[0])
+    plt.axis("off")
+    def animate(i):
+        patch.set_data(frames[i])
+    # 6s内播放完gif
+    fps = len(frames) // 6
+    anim = animation.FuncAnimation(plt.gcf(), animate, frames = len(frames), interval = 5)
+    anim.save("./CartPole_v1_result.gif", writer="pillow", fps = 120)
+
+def run2gif(env,agent):
+    
+    # 测试模型
+    round_count = 0
+    last_frames = []
+    last_step = 0
+    while round_count <= 20:
+        frames = []
+        round_count += 1
+        state, _ = env.reset()
+        done = False
+        episode_reward = 0.0
+        step = 0
+        while not done:
+            frames.append(env.render())
+            step += 1
+            action, _  = agent.select_action(state, eval_mode = True)  # We use the deterministic policy during the evaluating
+            state, reward, done,trun, _ = env.step(action)
+            if done: 
+                break
+            episode_reward += reward
+        if step > last_step:
+            last_frames = frames
+            display_frames_as_gif(last_frames)
+            last_step = step
+        print(f'round{round_count}: total step is {step}, total reward is {episode_reward}')
+    
+
+    

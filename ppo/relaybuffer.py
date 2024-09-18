@@ -13,7 +13,7 @@ from copy import deepcopy
 
 class RelayBuffer(object):
     """ 经验放回缓冲区 """
-    def __init__(self,buffer_capacity = 10e6) -> None:
+    def __init__(self,buffer_capacity = 10000) -> None:
         self.buffer_capacity = buffer_capacity
         self.buffer = []
 
@@ -26,12 +26,8 @@ class RelayBuffer(object):
             return 1
         # 如果缓冲区溢出
         else:
-            if must_add == True:
-                self.buffer.pop(0)
-                self.buffer.append(data)
-                return 1
-        # 数据写入缓冲区失败
-        return 0
+            # 数据写入缓冲区失败
+            return 0
 
     def sample(self):
         # batch = random.sample(self.buffer, min(len(self.buffer), batch_size))

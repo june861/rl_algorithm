@@ -1,4 +1,5 @@
 import os
+import time
 import gym.vector
 import gym.vector
 import torch
@@ -99,7 +100,7 @@ def main(args, number, seed):
             )
     # monitor tools init
     if args.monitor == "wandb":
-        wandb.init(project = "ppo_mp")
+        wandb.init(project = f"ppo_mp-{os.getpid()}-{int(time.time())}")
     else:
         # clear dir or make dir
         tensorboard_logdir = 'runs/PPO_mp_{}_seed_{}'.format(args.env_name, number, seed)
@@ -156,7 +157,7 @@ def main(args, number, seed):
             elif args.monitor == "tensorboard":
                 writer.add_scalar(tag = f'train_actor_loss_{args.env_name}', scalar_value = a_loss, global_step = total_steps)
                 writer.add_scalar(tag = f'train_critic_loss_{args.env_name}', scalar_value = c_loss, global_step = total_steps)
-        if train_step % args.evaluate_freq == 0:
+        if (train_step+1) % args.evaluate_freq == 0:
             eval_times = 5
             round_count = 0
             val_reward = 0
@@ -170,7 +171,7 @@ def main(args, number, seed):
                     step += 1
                     done = False
                     action, _  = agent.select_action(state, eval_mode = True)  # We use the deterministic policy during the evaluating
-                    state_, reward, done,trun, _ = val_env.step(action)
+                    state_, reward, done,trun, _ = val_env.step(action.item())
                     episode_reward += reward
                     state = state_
                 val_reward += episode_reward
@@ -209,12 +210,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for PPO")
     # env variable setting
     parser.add_argument("--env_name",type=str,default="CartPole-v1",help="The Env Name of Gym")
-    parser.add_argument("--env_num",type=int,default=100,help="The number of envs that are activated")
+    parser.add_argument("--env_num",type=int,default=10,help="The number of envs that are activated")
     parser.add_argument("--use_multiprocess",type=bool,default=False,help="use multi-process to generated frame data.")
     # training variable setting
-    parser.add_argument("--max_train_steps", type=int, default=50000, help=" Maximum number of training steps")
+    parser.add_argument("--max_train_steps", type=int, default=100, help=" Maximum number of training steps")
     parser.add_argument("--per_batch_steps", type=int, default=500, help="max step in a round.")
-    parser.add_argument("--evaluate_freq", type=int, default=20, help="Evaluate the policy every 'evaluate_freq' steps")
+    parser.add_argument("--evaluate_freq", type=int, default=5, help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=20, help="Save frequency")
     parser.add_argument("--batch_size", type=int, default=4096, help="Batch size")
     parser.add_argument("--mini_batch_size", type=int, default=128, help="Minibatch size")
