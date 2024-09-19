@@ -8,7 +8,7 @@
 @description   :   实现PG算法框架
 '''
 
-import gymnasium as gym
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -121,62 +121,3 @@ class PG(object):
         self.optimizer.step()
         self.loss.append(loss.cpu().detach().numpy().item())
         self.ep_obs, self.ep_act, self.ep_reward = [], [], []
-    
-
-## TEST CODE ##
-# def main():
-#     ENV_NAME = 'CartPole-v1'
-#     # ENV_NAME = 'Pendulum-v1'
-#     env = gym.make(ENV_NAME,  render_mode="rgb_array")
-#     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#     device = torch.device('cpu')
-#     max_iter = 10000
-#     max_step = 1000
-
-#     state_dim = env.observation_space.shape[0]
-#     action_dim = env.action_space.n
-#     layer_num = 3
-#     hidden_dim = [128,128]
-
-#     agent = PG(input_dim = state_dim, out_dim = action_dim, hidden_dims = hidden_dim, layer_num = layer_num, device = device)
-#     train_loss = []
-#     train_reward = []
-
-#     for i in range(max_iter):
-#         state, _ = env.reset()
-#         total_reward = 0
-#         for step in range(max_step):
-#             action = agent.select_action(state = state) # softmax概率选择action
-#             next_state, reward, done, truncation, _ = env.step(action)
-#             total_reward += reward
-#             agent.store_transition(state, action, reward)   # 新函数 存取这个transition
-#             state = next_state
-#             if done:
-#                 # print("stick for ",step, " steps")
-#                 agent.learn()   # 更新策略网络
-#                 break
-#         if (i+1) % 500 == 0:
-#             train_loss.append(sum(agent.loss) / len(agent.loss))
-#             agent.loss = []
-#         train_reward.append(total_reward)
-#         # Test every 100 episodes
-#         if i % 100 == 0:
-#             total_reward = 0
-#             for k in range(10):
-#                 state, _ = env.reset()
-#                 for j in range(max_step):
-#                     env.render()
-#                     action = agent.select_action(state)  # direct action for test
-#                     next_state, reward, done, truncation, _ = env.step(action)
-#                     total_reward += reward
-#                     if done:
-#                         break
-#             ave_reward = total_reward/10
-#             print ('episode: ',i, 'Evaluation Average Reward:', ave_reward)
-            
-
-#     plt.figure(dpi=80,figsize=(20,5))
-#     # plt.plot(train_loss)
-#     plt.plot(train_reward)
-#     plt.show()
-# main()

@@ -5,15 +5,29 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Run: ppo_main",
+            "name": "Python Run: ppo_mp_main",
             "type": "debugpy",
             "request": "launch",
-            "program": "D:/LocalCode/workspace/ppo_main.py",
+            "program": "${workspaceFolder}/ppo_mp_main.py",
             "console": "integratedTerminal",
             "args": [
                 "--batch_size", "8",
-                "--K_epochs", "10",
-                "--evaluate_freq", "1"
+                "--evaluate_freq", "1",
+                "--max_train_steps", "100",
+                "--per_batch_steps", "8",
+                "--mini_batch_size", "4"
+            ]
+        },
+        {
+            "name": "Python Run: ppo_main.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/ppo_main.py",
+            "console": "integratedTerminal",
+            "args": [
+
+                "--evaluate_freq", "1",
+                "--max_train_steps", "100"
             ]
         }
     ]
