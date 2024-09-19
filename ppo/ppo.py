@@ -81,8 +81,18 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
+    """ Critic Net Definition """
     def __init__(self,state_dim:int, act_dim:int, hidden_dims:list, use_tanh = False) -> None:
+        """ init function to define a critic net.
+
+        Args:
+            state_dim (int): the env observation space dim.
+            act_dim (int): the env action space dim.
+            hidden_dims (list): the hidden layer dims, it's length must be equal to len(layers) - 1.
+            use_tanh (bool, optional): use tanh as net activate function. Defaults to False.
+        """
         super(Critic,self).__init__()
+        # critic output dim must be set to 1.
         act_dim = 1
         input_dims = [state_dim] + hidden_dims
         output_dims = hidden_dims + [act_dim]
@@ -100,6 +110,7 @@ class Critic(nn.Module):
                     self.critic.append(nn.Tanh())
                 else:
                     self.critic.append(nn.ReLU())
+        # convert "list" to nn.Sequnetial.
         self.critic = nn.Sequential(*self.critic)
     
     def forward(self,state):
@@ -211,13 +222,15 @@ class PPO(object):
 
         actor_total_loss, critic_total_loss = 0.0, 0.0
         step = 0
-
+        advantages, v_targets = self.cal_adv(states = states, next_states = next_states, rewards = rewards, dw = batch_dw, dones = dones)
         for index in BatchSampler(SubsetRandomSampler(range(self.ppo_params['batch_size'])), self.ppo_params['mini_batch_size'], True):
             state, next_state, reward, dw, done = states[index], next_states[index], rewards[index], batch_dw[index], dones[index]
             # state = (state - state.mean()) / (state.std() + 1e-8)
             action, a_logprob = actions[index], a_logprobs[index]                                                                                                    
             # calculate adv
-            adv, v_target = self.cal_adv(states = state, next_states = next_state, rewards = reward, dw = dw, dones = done)
+            # adv, v_target = self.cal_adv(states = state, next_states = next_state, rewards = reward, dw = dw, dones = done)
+            
+            adv, v_target = advantages[index], v_targets[index]
             dist_now = Categorical(probs=self.actor(state))
             # shape is (batch_size, 1)
             dist_entropy = dist_now.entropy().view(-1, 1)

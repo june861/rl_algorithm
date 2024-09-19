@@ -144,7 +144,7 @@ class PPO(object):
             'use_lr_decay': train_params['use_lr_decay'],
             "use_gae": train_params['use_gae'],
         }
-
+        self.ppo_params['use_gae'] = False
         if not isinstance(hidden_dims,list) :
             raise RuntimeError(f"hidden_dims type must be list, now receive {type(hidden_dims)}. ")
         if len(hidden_dims) != layer_nums - 1:
@@ -197,115 +197,84 @@ class PPO(object):
         if self.ppo_params['off_policy']:
             self.actor_old.load_state_dict(self.actor.state_dict())
     
-    def cal_adv(self,obs, next_obs, rewards, dones, values, next_done):
-        # bootstrap value if not done
-        batch_per_step = obs.shape[0]
-        with torch.no_grad():
-            next_value = self.get_value(next_obs).reshape(1, -1)
-            if self.ppo_params['use_gae']:
-                advantages = torch.zeros_like(rewards).to(self.device)
-                lastgaelam = 0
-                # obs.shape[0] = args.batch_per_steps
-                for t in reversed(range(batch_per_step)):
-                    if t == batch_per_step - 1:
-                        nextnonterminal = 1.0 - next_done
-                        nextvalues = torch.tensor(next_value).to(self.device)
-                    else:
-                        nextnonterminal = 1.0 - dones[t + 1]
-                        nextvalues = torch.tensor(values[t + 1]).to(self.device)
-                    delta = rewards[t] + self.ppo_params['gamma'] * nextvalues * nextnonterminal - values[t]
-                    advantages[t] = lastgaelam = delta + self.ppo_params['gamma'] * self.ppo_params['lamda'] * nextnonterminal * lastgaelam
-                returns = advantages + values
-                return advantages, returns
-            else:
-                returns = torch.zeros_like(rewards).to(self.device)
-                for t in reversed(range(batch_per_step)):
-                    if t == batch_per_step - 1:
-                        nextnonterminal = 1.0 - next_done
-                        next_return = next_value
-                    else:
-                        nextnonterminal = 1.0 - dones[t + 1]
-                        next_return = returns[t + 1]
-                    returns[t] = rewards[t] + self.ppo_params['gamma'] * nextnonterminal * next_return
-                advantages = returns - values
-                return advantages, returns
-
-
-    def learn(self, batch_obs, batch_actions, batch_log_probs, batch_rewards, batch_dones, batch_values, obs, dones, update_epoch):
+    def cal_adv(self,obs, next_obs, rewards, dones):
         
-        # calculate advantage function.
-        adv, returns = self.cal_adv(obs = batch_obs, 
-                                    next_obs = obs, 
+        total_steps = obs.shape[0]
+        with torch.no_grad():
+            values = self.critic(obs).squeeze(2)
+            next_values = self.critic(next_obs).squeeze(2)
+            advantages = torch.zeros_like(rewards).to(self.device)
+            gae = 0
+            v_targets = rewards + self.ppo_params['gamma'] * (1 - dones) * next_values
+            deltas = v_targets - values
+            for index in reversed(range(total_steps)):
+                gae = deltas[index] + self.ppo_params['gamma'] * self.ppo_params['lamda'] * gae
+                advantages[index] = gae
+            
+            if self.ppo_params['use_adv_norm']:
+                advantages = ((advantages - advantages.mean())) / (advantages.std() + 1e-8)
+            return advantages, v_targets
+            
+
+    def learn(self, batch_obs, batch_actions, batch_log_probs, batch_rewards, batch_next_obs, batch_dones):
+
+
+        adv, v_targets = self.cal_adv(
+                                    obs = batch_obs, 
+                                    next_obs = batch_next_obs, 
                                     rewards = batch_rewards, 
                                     dones = batch_dones,
-                                    values = batch_values,
-                                    next_done = dones
                                 )
 
         # flatten the batch
-        b_obs = batch_obs.reshape((-1,) + (self.ppo_params['state_dim'],))
-        b_logprobs = batch_log_probs.reshape(-1)
-        # b_actions = batch_actions.reshape((-1,) + self.ppo_params['act_dim'])
-        b_advantages = adv.reshape(-1)
-        b_returns = returns.reshape(-1)
-        # b_values = batch_values.reshape(-1)
+        obs = batch_obs.reshape((-1,) + (self.ppo_params['state_dim'],))
+        # next_obs = batch_next_obs.reshape((-1,) + (self.ppo_params['state_dim'],))
+        actions = batch_actions.reshape(-1)
+        logprobs = batch_log_probs.reshape(-1)
+        advantages = adv.reshape(-1)
+        v_targets = v_targets.reshape(-1)
 
-        # Optimizing the policy and value network
-        # b_inds = np.arange(self.ppo_params['batch_size'])
         
-        loss_record = []
-        for epoch in range(update_epoch):
-            # np.random.shuffle(b_inds)
-            actor_total_loss, critic_total_loss = 0.0, 0.0
-            total_steps = 0
-            for index in BatchSampler(SubsetRandomSampler(range(b_obs.shape[0])), self.ppo_params['mini_batch_size'], False):
-            # for start in range(0, self.ppo_params['batch_size'], self.ppo_params['mini_batch_size']):
-                total_steps += 1
-                # end = start + self.ppo_params['mini_batch_size']
-                
-                a_probs = self.actor(b_obs[index])
-                dist = Categorical(probs = a_probs)
-                a_tmp = dist.sample()
-                a_logprobs = dist.log_prob(a_tmp)
-                newlogprob = a_logprobs
-                entropy = dist.entropy()
-                # _, newlogprob, entropy = self.select_action(b_obs[index], renturn_entropy = True)
-                newvalue = self.critic(b_obs[index])
-                logratio = newlogprob - b_logprobs[index]
-                ratio = torch.exp(logratio)
+        # np.random.shuffle(b_inds)
+        actor_total_loss, critic_total_loss = 0.0, 0.0
+        total_steps = 0
+        for index in BatchSampler(SubsetRandomSampler(range(obs.shape[0])), self.ppo_params['mini_batch_size'], False):
+            total_steps += 1
+            # end = start + self.ppo_params['mini_batch_size']
+            
+            dist = Categorical(probs = self.actor(obs[index]))
+            a_logprobs = dist.log_prob(actions[index])
+            entropy = dist.entropy()
+            ratio = torch.exp(a_logprobs - logprobs[index])
+            
 
-                mb_advantages = b_advantages[index]
-                if self.ppo_params['use_adv_norm']:
-                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+            # Policy loss
+            surr1 = advantages[index] * ratio
+            surr2 = advantages[index] * torch.clamp(ratio, 1 - self.ppo_params['use_ppo_clip'], 1 + self.ppo_params['use_ppo_clip'])
+            self.actor_optim.zero_grad()
+            actor_loss = (- torch.min(surr1, surr2) - self.ppo_params['entropy_coef'] * entropy).mean()
+            # actor_loss = torch.max(surr1, surr2).mean()
+            actor_loss.backward()
+            if self.ppo_params['use_grad_clip']:  # Trick 7: Gradient clip
+                nn.utils.clip_grad_norm_(self.actor.parameters(), self.ppo_params['grad_clip_params'])
+            self.actor_optim.step()
 
-                # Policy loss
-                surr1 = -mb_advantages * ratio
-                surr2 = -mb_advantages * torch.clamp(ratio, 1 - self.ppo_params['use_ppo_clip'], 1 + self.ppo_params['use_ppo_clip'])
-                self.actor_optim.zero_grad()
-                # actor_loss = (torch.max(surr1, surr2) - self.ppo_params['entropy_coef'] * entropy).mean()
-                actor_loss = torch.max(surr1, surr2).mean()
-                actor_loss.backward()
-                if self.ppo_params['use_grad_clip']:  # Trick 7: Gradient clip
-                    nn.utils.clip_grad_norm_(self.actor.parameters(), self.ppo_params['grad_clip_params'])
-                self.actor_optim.step()
+            # Value loss
+            value = self.critic(obs[index]).view(-1)
+            self.critic_optim.zero_grad()
+            critic_loss = F.mse_loss(value, v_targets[index])
+            # critic_loss = 0.5 * ((newvalue - b_returns[index]) ** 2).mean()
+            critic_loss.backward()
+            if self.ppo_params['use_grad_clip']:  # Trick 7: Gradient clip
+                nn.utils.clip_grad_norm_(self.critic.parameters(), self.ppo_params['grad_clip_params'])
+            self.critic_optim.step()
 
-                # Value loss
-                newvalue = newvalue.view(-1)
-                self.critic_optim.zero_grad()
-                critic_loss = F.mse_loss(newvalue, b_returns[index])
-                # critic_loss = 0.5 * ((newvalue - b_returns[index]) ** 2).mean()
-                critic_loss.backward()
-                if self.ppo_params['use_grad_clip']:  # Trick 7: Gradient clip
-                    nn.utils.clip_grad_norm_(self.critic.parameters(), self.ppo_params['grad_clip_params'])
-                self.critic_optim.step()
+            actor_total_loss += actor_loss.detach().cpu().numpy().item()
+            critic_total_loss += critic_loss.detach().cpu().numpy().item()
+        actor_total_loss /= total_steps
+        critic_total_loss /= total_steps
 
-                actor_total_loss += actor_loss.detach().cpu().numpy().item()
-                critic_total_loss += critic_loss.detach().cpu().numpy().item()
-            actor_total_loss /= total_steps
-            critic_total_loss /= total_steps
-            loss_record.append((actor_total_loss, critic_total_loss))
-        
-        return loss_record
+        return (actor_total_loss, critic_total_loss)
     
     def checkpoint_attributes(self, only_net):
         if only_net:
@@ -325,7 +294,7 @@ class PPO(object):
                 'actor_optim' : self.actor_optim.state_dict(),
                 'critic_optim' : self.critic_optim.state_dict(),
             }
-
+        return attr
     @classmethod
     def from_checkoint(cls, checkpoint):
         agent_instance = cls(

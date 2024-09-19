@@ -101,7 +101,7 @@ def draw_metric():
 
 
 
-def display_frames_as_gif(frames):
+def display_frames_as_gif(frames, gif_name):
     """ save frame data to gif
 
     Args:
@@ -114,9 +114,9 @@ def display_frames_as_gif(frames):
     # 6s内播放完gif
     fps = len(frames) // 6
     anim = animation.FuncAnimation(plt.gcf(), animate, frames = len(frames), interval = 5)
-    anim.save("./CartPole_v1_result.gif", writer="pillow", fps = 120)
+    anim.save(gif_name, writer="pillow", fps = 120)
 
-def run2gif(env,agent):
+def run2gif(env, agent, gif_name):
     
     # 测试模型
     round_count = 0
@@ -139,7 +139,7 @@ def run2gif(env,agent):
             episode_reward += reward
         if step > last_step:
             last_frames = frames
-            display_frames_as_gif(last_frames)
+            display_frames_as_gif(last_frames, gif_name)
             last_step = step
         print(f'round{round_count}: total step is {step}, total reward is {episode_reward}')
     

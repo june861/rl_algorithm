@@ -142,7 +142,7 @@ def main(args, env_name, number, seed):
         fit_model_tag = False
         # Evaluate the policy every 'evaluate_freq' steps
         if total_steps % args.evaluate_freq == 0:
-            times = 5 
+            times = 5
             evaluate_reward = 0
             total_frame = 0
             for j in range(times):
@@ -155,13 +155,13 @@ def main(args, env_name, number, seed):
                     action, _  = agent.select_action(state, eval_mode = True)  # We use the deterministic policy during the evaluating
                     state, reward, done,trun, _ = env.step(action)
                     episode_reward += reward
-                    if done: 
+                    if done or episode_frame >= 10000: 
                         break
                 total_frame += episode_frame
                 evaluate_reward += episode_reward
             evaluate_rewards.append(evaluate_reward / times)
             evaluate_num += 1
-            if evaluate_reward / times > 3000:
+            if evaluate_reward / times > 5000:
                 fit_model_tag = True
             print(f"total_step is {total_steps}\t evaluate_num:{evaluate_num} \t evaluate_reward:{evaluate_reward / times} \t")
             if args.monitor == "wandb":
@@ -175,7 +175,9 @@ def main(args, env_name, number, seed):
     if args.monitor == "tensorboard":
         writer.close()
 
-    run2gif(env = eval_env, agent = agent)
+    # test
+    gif_name = f'{env_name}_ppo_{int(time.time())}_{os.getpid()}.gif'
+    run2gif(env = eval_env, agent = agent, gif_name = gif_name)
 
 
 
@@ -198,7 +200,7 @@ if __name__ == '__main__':
     parser.add_argument("--use_state_norm", type=bool, default=True, help="Trick 2:state normalization")
     parser.add_argument("--use_reward_norm", type=bool, default=True, help="Trick 3:reward normalization")
     parser.add_argument("--use_reward_scaling", type=bool, default=True, help="Trick 4:reward scaling")
-    parser.add_argument("--entropy_coef", type=float, default=0.1, help="Trick 5: policy entropy")
+    parser.add_argument("--entropy_coef", type=float, default=0.01, help="Trick 5: policy entropy")
     parser.add_argument("--use_lr_decay", type=bool, default=True, help="Trick 6:learning rate Decay")
     parser.add_argument("--use_grad_clip", type=bool, default=True, help="Trick 7: Gradient clip")
     parser.add_argument("--use_orthogonal_init", type=bool, default=True, help="Trick 8: orthogonal initialization")

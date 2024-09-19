@@ -54,4 +54,13 @@ J^{\theta^{'}}(\theta) = \mathbb{E}_{(s_t,a_t) \sim \pi_{\theta^{'}}}[\frac{p_\t
 $$
 
 ## 3. TRPO & PPO
-TRPO是PPO的前身，叫做信任区域策略优化(Trust Region Policy Optimization)。其思路如下：优化目标就是我们上面推出的$J^{\theta^{'}}(\theta)$是我们使用了重要性采样，而重要性采样的要求就是原采样和目标采样不能相差太大，
+### 3.1 TRPO
+TRPO是PPO的前身，叫做信任区域策略优化(Trust Region Policy Optimization)。其思路如下：优化目标就是我们上面推出的$J^{\theta^{'}}(\theta)$是我们使用了重要性采样，而重要性采样的要求就是原采样和目标采样不能相差太大，这里就是说策略$\pi_\theta$和$\pi_{\theta^{'}}$的输出动作概率不能相差太大，TRPO采用KL散度(KL divergence)的方法来评价二者的差异，记作 $ KL(\theta,\theta^{'})$ 。TRPO规定，当进行优化时，$ KL(\theta,\theta^{'})$一定要小于某个阈值，即：
+$$
+J^{\theta^{'}}(\theta) = \mathbb{E}_{(s_t,a_t) \sim \pi_{\theta^{'}}}[\frac{p_\theta(a_t|s_t)}{p_{\theta^{'}}(a_t|s_t)} A^{\theta^{'}}(s_t,a_t)]\quad, \quad  KL(\theta,\theta^{'}) < \gamma
+
+$$
+
+### 3.2 PPO1
+
+
