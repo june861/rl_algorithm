@@ -62,5 +62,38 @@ J^{\theta^{'}}(\theta) = \mathbb{E}_{(s_t,a_t) \sim \pi_{\theta^{'}}}[\frac{p_\t
 $$
 
 ### 3.2 PPO1
+TRPO相当于给目标函数增加了一项额外的约束（constrain），而且这个约束并没有体现在目标函数里，在计算过程中这样的约束是很难处理的。PPO的做法就是将这样约束融进了目标函数，其目标函数如下：
+$$
+J^{\theta^{'}}(\theta) = \mathbb{E}_{(s_t,a_t) \sim \pi_{\theta^{'}}}[\frac{p_\theta(a_t|s_t)}{p_{\theta^{'}}(a_t|s_t)} A^{\theta^{'}}(s_t,a_t)] - \beta KL(\theta,\theta^{'})
+$$
+
+### 3.2.1 PPO算法流程  
+#### 初始化  
+- 初始化策略网络 $\pi_{\theta}$ 和价值网络 $V_{\phi}$ 的参数 $\theta$ 和 $\phi$  
+- 初始化回放缓冲区 $D$  
+  
+#### 循环训练多个轮次  
+对于每个轮次 $k = 0, 1, 2, ...$ 执行以下步骤：  
+  
+1. **数据收集**  
+   - 在环境中运行当前策略 $\pi_{\theta_k}$，执行 $T$ 个时间步  
+   - 记录每一步的轨迹（状态 $s_t$，动作 $a_t$，奖励 $r_t$，下一个状态 $s_{t+1}$）  
+   - 将轨迹数据存入回放缓冲区 $D$  
+  
+2. **更新**  
+   - 对 $N$ 个epoch，执行以下步骤：  
+     - 从 $D$ 中随机采样一批数据  
+     - 对于这批数据中的每个状态 $s_t$：  
+       - 使用当前策略 $\pi_{\theta_k}$ 计算 $a_t$（以及可选地，动作分布中的熵 $H(t)$）  
+       - 计算旧动作对应的旧策略下的概率 $\pi_{\theta_{old}}(a_t|s_t)$  
+       - 计算优势估计 $\hat{A}_t$ 和价值估计 $\hat{V}_t$  
+       - 计算损失函数 $L_{surr}(\theta)$, $L_{vf}(\phi)$, $L_{ent}(\theta)$  
+       - 更新 $\theta$ 和 $\phi$ 以最小化总损失 $L_{total} = L_{surr}(\theta) - c_1 L_{vf}(\phi) + c_2 S[\pi_{\theta}](s_t) + ...$（其中 $S$ 是熵正则化项）  
+       - 更新 $\theta_{old} \leftarrow \theta$ 
+
+## 3.3 PPO2
+    
+    
+  
 
 
