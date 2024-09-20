@@ -211,8 +211,8 @@ class PPO(object):
                 gae = deltas[index] + self.ppo_params['gamma'] * self.ppo_params['lamda'] * gae
                 advantages[index] = gae
             
-            if self.ppo_params['use_adv_norm']:
-                advantages = ((advantages - advantages.mean())) / (advantages.std() + 1e-8)
+            # if self.ppo_params['use_adv_norm']:
+            #     advantages = ((advantages - advantages.mean())) / (advantages.std() + 1e-8)
             return advantages, v_targets
             
 
@@ -249,8 +249,11 @@ class PPO(object):
             
 
             # Policy loss
-            surr1 = advantages[index] * ratio
-            surr2 = advantages[index] * torch.clamp(ratio, 1 - self.ppo_params['use_ppo_clip'], 1 + self.ppo_params['use_ppo_clip'])
+            adv = advantages[index]
+            if self.ppo_params['use_adv_norm']:
+                adv = ((adv - advantages.mean())) / (adv.std() + 1e-8)
+            surr1 = adv * ratio
+            surr2 = adv * torch.clamp(ratio, 1 - self.ppo_params['use_ppo_clip'], 1 + self.ppo_params['use_ppo_clip'])
             self.actor_optim.zero_grad()
             actor_loss = (- torch.min(surr1, surr2) - self.ppo_params['entropy_coef'] * entropy).mean()
             # actor_loss = torch.max(surr1, surr2).mean()

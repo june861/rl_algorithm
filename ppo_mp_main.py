@@ -188,9 +188,6 @@ def main(args, number, seed):
                 writer.add_scalar(tag = f'validation_reward_{args.env_name}', scalar_value = val_reward / eval_times, global_step = evaluate_num)
                 writer.add_scalar(tag = f'validation_rounds_{args.env_name}', scalar_value = round_count / eval_times, global_step = evaluate_num)
             evaluate_num += 1
-
-        if fit_model_tag:
-            break
     
     # save model, can choice
     agent.save_checkpoint(only_net = False)

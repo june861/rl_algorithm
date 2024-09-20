@@ -133,7 +133,7 @@ def run2gif(env, agent, gif_name):
             frames.append(env.render())
             step += 1
             action, _  = agent.select_action(state, eval_mode = True)  # We use the deterministic policy during the evaluating
-            state, reward, done,trun, _ = env.step(action)
+            state, reward, done,trun, _ = env.step(action.item())
             if done: 
                 break
             episode_reward += reward

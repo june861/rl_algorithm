@@ -135,5 +135,55 @@ $$
 ## 4. Implement of PPO2
 本节将会实现一个Actor-Critic的PPO2算法。依据第三小节中PPO2的目标函数，我们可以知道实现PPO2有几个重要的点：
 
-- 优势函数的实现
+- 优势函数的实现：本次实现优势项的计算将会采用gae优势函数来计算。
+在PPO（Proximal Policy Optimization）算法中，使用GAE（Generalized Advantage Estimation，广义优势估计）作为优势函数的计算方法是一种常见且有效的方法。GAE能够在偏差（bias）和方差（variance）之间取得平衡，从而提升算法的性能。以下是使用GAE作为PPO2优势函数计算的具体步骤和解释：
+
+### 1. 优势函数的定义
+
+在强化学习中，优势函数定义为：
+$$
+A(s_t, a_t) = Q(s_t, a_t) - V(s_t)
+$$
+其中，$Q(s_t, a_t)$ 是状态 $s_t$ 下采取动作 $a_t$ 的期望回报，$V(s_t)$ 是状态 $s_t$ 下的价值函数。
+
+#### 2. GAE的计算方法
+
+GAE通过结合多个时间步的TD（Temporal Difference）误差来估计优势函数，具体公式为：
+
+$
+A_t^{GAE}(\gamma, \lambda) = \sum_{l=0}^{\infty} (\gamma \lambda)^l \delta_{t+l}
+$
+
+其中，$\gamma$ 是折扣因子，$\lambda$ 是GAE的衰减因子，用于调节偏差和方差之间的平衡。$\delta_t$ 是TD误差，定义为：
+$$
+
+\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)
+$$
+这里，$r_t$ 是从状态 $s_t$ 转移到 $s_{t+1}$ 时获得的即时奖励。
+
+#### 3. 实际应用中的计算步骤
+
+在实际应用中，由于序列长度是有限的，我们通常会将 $\infty$ 替换为实际的序列长度 $T$，因此GAE的计算变为：
+
+$
+A_t^{GAE}(\gamma, \lambda) \approx \sum_{l=0}^{T-t-1} (\gamma \lambda)^l \delta_{t+l}
+$
+
+计算过程如下：
+
+1. **初始化**：对于每个时间步 $t$，初始化 $A_t^{GAE} = 0$。
+2. **计算TD误差**：对于每个时间步 $t$，计算 $\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)$。
+3. **累加GAE**：从 $l=0$ 开始，逐步累加 $(\gamma \lambda)^l \delta_{t+l}$ 到 $A_t^{GAE}$，直到 $l = T-t-1$。
+4. **更新**：使用计算出的 $A_t^{GAE}$ 作为PPO算法中的优势函数估计。
+
+#### 4. PPO算法中的使用
+
+在PPO算法中，优势函数 $(A_t)$ 用于计算策略损失函数 $(L^{CLIP}(\theta))$，具体形式为：
+$$
+
+L^{CLIP}(\theta) = \hat{\mathbb{E}}_t \left[ \min \left( r_t(\theta) A_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) A_t \right) \right]
+
+$$
+其中，$(r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\theta_{\text{old}}}(a_t|s_t)})$ 是新旧策略之比，$\epsilon$ 是一个超参数，用于限制策略更新的幅度。
+
 - 

@@ -12,8 +12,8 @@
             "console": "integratedTerminal",
             "args": [
                 "--batch_size", "8",
-                "--evaluate_freq", "1",
-                "--max_train_steps", "100",
+                "--evaluate_freq", "5",
+                "--max_train_steps", "10",
                 "--per_batch_steps", "8",
                 "--mini_batch_size", "4"
             ]
