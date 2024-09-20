@@ -1,0 +1,29 @@
+{"time":"2024-09-20T17:24:38.8084603+08:00","level":"INFO","msg":"using version","core version":"0.18.0"}
+{"time":"2024-09-20T17:24:38.808541+08:00","level":"INFO","msg":"created symlink","path":"F:\\Repository\\rl_algorithm\\wandb\\run-20240920_172438-aqzyoxkd\\logs\\debug-core.log"}
+{"time":"2024-09-20T17:24:38.8090459+08:00","level":"INFO","msg":"using version","core version":"0.18.0"}
+{"time":"2024-09-20T17:24:38.8090459+08:00","level":"INFO","msg":"created symlink","path":"F:\\Repository\\rl_algorithm\\wandb\\run-20240920_172438-aqzyoxkd\\logs\\debug-core.log"}
+{"time":"2024-09-20T17:24:38.817148+08:00","level":"INFO","msg":"created new stream","id":"aqzyoxkd"}
+{"time":"2024-09-20T17:24:38.8176645+08:00","level":"INFO","msg":"stream: started","id":"aqzyoxkd"}
+{"time":"2024-09-20T17:24:38.8176645+08:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"aqzyoxkd"}}
+{"time":"2024-09-20T17:24:38.8176645+08:00","level":"INFO","msg":"sender: started","stream_id":{"value":"aqzyoxkd"}}
+{"time":"2024-09-20T17:24:38.8176645+08:00","level":"INFO","msg":"handler: started","stream_id":{"value":"aqzyoxkd"}}
+{"time":"2024-09-20T17:24:42.0103801+08:00","level":"INFO","msg":"stream: closing","id":"aqzyoxkd"}
+{"time":"2024-09-20T17:25:00.0172698+08:00","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-20T17:25:23.182721+08:00","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-20T17:25:48.6956224+08:00","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-20T17:26:18.1908649+08:00","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-20T17:26:59.0430224+08:00","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-20T17:27:54.6960246+08:00","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-20T17:29:15.7680209+08:00","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-20T17:30:36.8459048+08:00","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-20T17:31:57.9329197+08:00","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-20T17:32:58.6251111+08:00","level":"WARN","msg":"No requirements.txt found, not creating job artifact. See https://docs.wandb.ai/guides/launch/create-job"}
+{"time":"2024-09-20T17:32:58.6251111+08:00","level":"INFO","msg":"sender: sendDefer: no job artifact to save"}
+{"time":"2024-09-20T17:32:58.6531917+08:00","level":"ERROR","msg":"HTTP error","status":404,"method":"POST","url":"https://api.wandb.ai/graphql"}
+{"time":"2024-09-20T17:32:58.6531917+08:00","level":"ERROR","msg":"runfiles: CreateRunFiles returned error: returned error 404 Not Found: {\"errors\":[{\"message\":\"project /ppo-43508-1726824273 not found during createRunFiles\",\"path\":[\"createRunFiles\"]}],\"data\":{\"createRunFiles\":null}}"}
+{"time":"2024-09-20T17:32:58.9133312+08:00","level":"ERROR","msg":"HTTP error","status":404,"method":"POST","url":"https://api.wandb.ai/graphql"}
+{"time":"2024-09-20T17:32:58.9133312+08:00","level":"ERROR","msg":"runfiles: CreateRunFiles returned error: returned error 404 Not Found: {\"errors\":[{\"message\":\"project /ppo-43508-1726824273 not found during createRunFiles\",\"path\":[\"createRunFiles\"]}],\"data\":{\"createRunFiles\":null}}"}
+{"time":"2024-09-20T17:32:58.9133312+08:00","level":"INFO","msg":"handler: closed","stream_id":{"value":"aqzyoxkd"}}
+{"time":"2024-09-20T17:32:58.9133312+08:00","level":"INFO","msg":"sender: closed","stream_id":{"value":"aqzyoxkd"}}
+{"time":"2024-09-20T17:32:58.9133312+08:00","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"aqzyoxkd"}}
+{"time":"2024-09-20T17:32:58.9562147+08:00","level":"INFO","msg":"stream: closed","id":"aqzyoxkd"}

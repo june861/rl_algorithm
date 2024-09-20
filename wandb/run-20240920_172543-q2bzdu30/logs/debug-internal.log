@@ -1,0 +1,19 @@
+{"time":"2024-09-20T17:25:43.3998816+08:00","level":"INFO","msg":"using version","core version":"0.18.0"}
+{"time":"2024-09-20T17:25:43.3998816+08:00","level":"INFO","msg":"created symlink","path":"F:\\Repository\\rl_algorithm\\wandb\\run-20240920_172543-q2bzdu30\\logs\\debug-core.log"}
+{"time":"2024-09-20T17:25:43.4003973+08:00","level":"INFO","msg":"using version","core version":"0.18.0"}
+{"time":"2024-09-20T17:25:43.4003973+08:00","level":"INFO","msg":"created symlink","path":"F:\\Repository\\rl_algorithm\\wandb\\run-20240920_172543-q2bzdu30\\logs\\debug-core.log"}
+{"time":"2024-09-20T17:25:43.4061348+08:00","level":"INFO","msg":"created new stream","id":"q2bzdu30"}
+{"time":"2024-09-20T17:25:43.4061348+08:00","level":"INFO","msg":"stream: started","id":"q2bzdu30"}
+{"time":"2024-09-20T17:25:43.4061348+08:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"q2bzdu30"}}
+{"time":"2024-09-20T17:25:43.4061348+08:00","level":"INFO","msg":"handler: started","stream_id":{"value":"q2bzdu30"}}
+{"time":"2024-09-20T17:25:43.4061348+08:00","level":"INFO","msg":"sender: started","stream_id":{"value":"q2bzdu30"}}
+{"time":"2024-09-20T17:26:04.6574569+08:00","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-20T17:26:27.7440232+08:00","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-20T17:26:53.2164459+08:00","level":"INFO","msg":"api: retrying HTTP request, no error or response"}
+{"time":"2024-09-20T17:27:15.2535434+08:00","level":"INFO","msg":"stream: closing","id":"q2bzdu30"}
+{"time":"2024-09-20T17:27:15.2535434+08:00","level":"INFO","msg":"handler: closed","stream_id":{"value":"q2bzdu30"}}
+{"time":"2024-09-20T17:27:15.2535434+08:00","level":"INFO","msg":"writer: Close: closed","stream_id":{"value":"q2bzdu30"}}
+{"time":"2024-09-20T17:27:15.2540488+08:00","level":"ERROR","msg":"sender: upsertRun:","error":"failed to upsert bucket: api: failed sending: POST https://api.wandb.ai/graphql giving up after 4 attempt(s): context canceled"}
+{"time":"2024-09-20T17:27:15.2540488+08:00","level":"ERROR","msg":"runwork: ignoring record after close","work":{"Record":{"RecordType":{"Request":{"RequestType":{"Defer":{}}}},"control":{"always_send":true}}}}
+{"time":"2024-09-20T17:27:15.2595272+08:00","level":"INFO","msg":"sender: closed","stream_id":{"value":"q2bzdu30"}}
+{"time":"2024-09-20T17:27:15.2595996+08:00","level":"INFO","msg":"stream: closed","id":"q2bzdu30"}

@@ -1,0 +1,9 @@
+{"time":"2024-09-20T17:21:04.2110216+08:00","level":"INFO","msg":"using version","core version":"0.18.0"}
+{"time":"2024-09-20T17:21:04.2115312+08:00","level":"INFO","msg":"created symlink","path":"F:\\Repository\\rl_algorithm\\wandb\\run-20240920_172104-k6vgw4tw\\logs\\debug-core.log"}
+{"time":"2024-09-20T17:21:04.2139841+08:00","level":"INFO","msg":"using version","core version":"0.18.0"}
+{"time":"2024-09-20T17:21:04.2139841+08:00","level":"INFO","msg":"created symlink","path":"F:\\Repository\\rl_algorithm\\wandb\\run-20240920_172104-k6vgw4tw\\logs\\debug-core.log"}
+{"time":"2024-09-20T17:21:04.2347991+08:00","level":"INFO","msg":"created new stream","id":"k6vgw4tw"}
+{"time":"2024-09-20T17:21:04.2347991+08:00","level":"INFO","msg":"stream: started","id":"k6vgw4tw"}
+{"time":"2024-09-20T17:21:04.2353152+08:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"k6vgw4tw"}}
+{"time":"2024-09-20T17:21:04.2353152+08:00","level":"INFO","msg":"sender: started","stream_id":{"value":"k6vgw4tw"}}
+{"time":"2024-09-20T17:21:04.2353152+08:00","level":"INFO","msg":"handler: started","stream_id":{"value":"k6vgw4tw"}}

@@ -202,12 +202,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for PPO")
     # env variable setting
     parser.add_argument("--env_name",type=str,default="CartPole-v1",help="The Env Name of Gym")
-    parser.add_argument("--env_num",type=int,default=4,help="The number of envs that are activated")
+    parser.add_argument("--env_num",type=int,default=10,help="The number of envs that are activated")
     parser.add_argument("--use_multiprocess",type=bool,default=False,help="use multi-process to generated frame data.")
     # training variable setting
-    parser.add_argument("--max_train_steps", type=int, default=200, help=" Maximum number of training steps")
+    parser.add_argument("--max_train_steps", type=int, default=2000, help=" Maximum number of training steps")
     parser.add_argument("--per_batch_steps", type=int, default=500, help="max step in a round.")
-    parser.add_argument("--evaluate_freq", type=int, default=20, help="Evaluate the policy every 'evaluate_freq' steps")
+    parser.add_argument("--evaluate_freq", type=int, default=50, help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=20, help="Save frequency")
     parser.add_argument("--batch_size", type=int, default=4096, help="Batch size")
     parser.add_argument("--mini_batch_size", type=int, default=256, help="Minibatch size")
