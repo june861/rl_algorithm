@@ -1,7 +1,5 @@
 import os
 import time
-import gym.vector
-import gym.vector
 import torch
 import numpy as np
 import gym
@@ -67,14 +65,14 @@ def main(args, number, seed):
     else:
         envs = gym.vector.SyncVectorEnv(train_envs)
     val_env = gym.make(args.env_name)
-    eval_env = gym.make(args.env_name, render_mode = "human")
+    eval_env = gym.make(args.env_name, render_mode =  "rgb_array")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # device = torch.device('cpu')
 
     state_dim = envs.single_observation_space.shape[0]
     action_dim = envs.single_action_space.n
     layer_nums = 3
-    hidden_dims = [64,64]
+    hidden_dims = [128,128]
     # args.max_episode_steps = env._max_episode_steps  # Maximum number of steps per episode
     print(f'======== run ppo algorithm =========')
     print("env = {}".format(args.env_name))
@@ -99,7 +97,8 @@ def main(args, number, seed):
             )
     # monitor tools init
     if args.monitor == "wandb":
-        wandb.init(project = f"ppo_mp-{os.getpid()}-{int(time.time())}")
+        name = f'{args.env_name}_mp_{os.getpid()}-{int(time.time())}'
+        wandb.init(project = f"ppo_train", name  = name)
     else:
         # clear dir or make dir
         tensorboard_logdir = 'runs/PPO_mp_{}_seed_{}'.format(args.env_name, number, seed)
@@ -161,7 +160,7 @@ def main(args, number, seed):
                 writer.add_scalar(tag = f'train_actor_loss_{args.env_name}', scalar_value = a_loss, global_step = total_steps)
                 writer.add_scalar(tag = f'train_critic_loss_{args.env_name}', scalar_value = c_loss, global_step = total_steps)
         
-        fit_model_tag = False
+
         if (train_step+1) % args.evaluate_freq == 0:
             eval_times = 5
             round_count = 0
@@ -183,8 +182,6 @@ def main(args, number, seed):
                         break
                 val_reward += episode_reward
                 round_count += step
-            if val_reward / eval_times >= 15000:
-                fit_model_tag = True
             print(f'step is {train_step}, validation reward is {val_reward / eval_times}, every round count is {round_count / eval_times}')
             if args.monitor == "wandb":
                 wandb.log({'eval_reward':val_reward / eval_times, "eval_steps": (round_count / eval_times)})
@@ -192,9 +189,6 @@ def main(args, number, seed):
                 writer.add_scalar(tag = f'validation_reward_{args.env_name}', scalar_value = val_reward / eval_times, global_step = evaluate_num)
                 writer.add_scalar(tag = f'validation_rounds_{args.env_name}', scalar_value = round_count / eval_times, global_step = evaluate_num)
             evaluate_num += 1
-
-        if fit_model_tag:
-            break
     
     # save model, can choice
     agent.save_checkpoint(only_net = False)
@@ -208,15 +202,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for PPO")
     # env variable setting
     parser.add_argument("--env_name",type=str,default="CartPole-v1",help="The Env Name of Gym")
-    parser.add_argument("--env_num",type=int,default=30,help="The number of envs that are activated")
+    parser.add_argument("--env_num",type=int,default=4,help="The number of envs that are activated")
     parser.add_argument("--use_multiprocess",type=bool,default=False,help="use multi-process to generated frame data.")
     # training variable setting
     parser.add_argument("--max_train_steps", type=int, default=200, help=" Maximum number of training steps")
     parser.add_argument("--per_batch_steps", type=int, default=500, help="max step in a round.")
-    parser.add_argument("--evaluate_freq", type=int, default=5, help="Evaluate the policy every 'evaluate_freq' steps")
+    parser.add_argument("--evaluate_freq", type=int, default=20, help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=20, help="Save frequency")
     parser.add_argument("--batch_size", type=int, default=4096, help="Batch size")
-    parser.add_argument("--mini_batch_size", type=int, default=512, help="Minibatch size")
+    parser.add_argument("--mini_batch_size", type=int, default=256, help="Minibatch size")
     parser.add_argument("--hidden_width", type=int, default=64, help="The number of neurons in hidden layers of the neural network")
     parser.add_argument("--lr_a", type=float, default=1e-3, help="Learning rate of actor")
     parser.add_argument("--lr_c", type=float, default=1e-4, help="Learning rate of critic")

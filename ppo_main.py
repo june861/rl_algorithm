@@ -72,7 +72,8 @@ def main(args, env_name, number, seed):
             )
 
     if args.monitor == "wandb":
-        wandb.init(project = f"ppo-{os.getpid()}-{int(time.time())}")
+        name = f'{args.env_name}_{os.getpid()}-{int(time.time())}'
+        wandb.init(project = f"ppo-{os.getpid()}-{int(time.time())}", name = name)
     else:
         # Build a tensorboard 
         log_dir = 'runs/PPO_{}_number_seed_{}'.format(env_name, number, seed)
@@ -139,7 +140,6 @@ def main(args, env_name, number, seed):
             agent.ppo_params['lr_a'] = new_lr_a
             agent.ppo_params['lr_c'] = new_lr_c
 
-        fit_model_tag = False
         # Evaluate the policy every 'evaluate_freq' steps
         if total_steps % args.evaluate_freq == 0:
             times = 5
@@ -161,8 +161,6 @@ def main(args, env_name, number, seed):
                 evaluate_reward += episode_reward
             evaluate_rewards.append(evaluate_reward / times)
             evaluate_num += 1
-            if evaluate_reward / times > 5000:
-                fit_model_tag = True
             print(f"total_step is {total_steps}\t evaluate_num:{evaluate_num} \t evaluate_reward:{evaluate_reward / times} \t")
             if args.monitor == "wandb":
                 wandb.log({"eval_rewards": (evaluate_reward / times), "eval_steps" : (total_frame / times)})
@@ -170,8 +168,6 @@ def main(args, env_name, number, seed):
                 writer.add_scalar('step_rewards_{}'.format(env_name), evaluate_reward / times, global_step = evaluate_num)
                 writer.add_scalar('frame_length_{}'.format(env_name), total_frame / times, global_step = evaluate_num)
             
-        if fit_model_tag:
-            break
     if args.monitor == "tensorboard":
         writer.close()
 
@@ -183,7 +179,8 @@ def main(args, env_name, number, seed):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for PPO")
-    parser.add_argument("--max_train_steps", type=int, default=int(2000), help=" Maximum number of training steps")
+    parser.add_argument("--env_name",type=str,default="CartPole-v1",choices=['CartPole-v1', 'LunarLander-v2'],help="which env to use for testing ppo")
+    parser.add_argument("--max_train_steps", type=int, default=int(500), help=" Maximum number of training steps")
     parser.add_argument("--evaluate_freq", type=int, default=10, help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=5,  help="Save frequency")
     parser.add_argument("--batch_size", type=int, default=2048, help="Batch size")
@@ -209,6 +206,5 @@ if __name__ == '__main__':
     parser.add_argument("--monitor",type=str,default="tensorboard",choices=["tensorboard","wandb"],help="use Dynamic tools to monitor train process")
     args = parser.parse_args()
 
-    env_name = ['CartPole-v1', 'LunarLander-v2']
-    env_index = 0
-    main(args, env_name=env_name[env_index], number=1, seed=0)
+    env_name = args.env_name
+    main(args, env_name=env_name, number=1, seed=0)
