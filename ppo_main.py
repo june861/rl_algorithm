@@ -72,7 +72,8 @@ def main(args, env_name, number, seed):
             )
 
     if args.monitor == "wandb":
-        wandb.init(project = f"ppo-{os.getpid()}-{int(time.time())}")
+        name = f'{args.env_name}_{os.getpid()}-{int(time.time())}'
+        wandb.init(project = f"ppo-{os.getpid()}-{int(time.time())}", name = name)
     else:
         # Build a tensorboard 
         log_dir = 'runs/PPO_{}_number_seed_{}'.format(env_name, number, seed)

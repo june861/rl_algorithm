@@ -65,14 +65,14 @@ def main(args, number, seed):
     else:
         envs = gym.vector.SyncVectorEnv(train_envs)
     val_env = gym.make(args.env_name)
-    eval_env = gym.make(args.env_name, render_mode = "human")
+    eval_env = gym.make(args.env_name, render_mode =  "rgb_array")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # device = torch.device('cpu')
 
     state_dim = envs.single_observation_space.shape[0]
     action_dim = envs.single_action_space.n
     layer_nums = 3
-    hidden_dims = [64,64]
+    hidden_dims = [128,128]
     # args.max_episode_steps = env._max_episode_steps  # Maximum number of steps per episode
     print(f'======== run ppo algorithm =========')
     print("env = {}".format(args.env_name))
@@ -97,7 +97,8 @@ def main(args, number, seed):
             )
     # monitor tools init
     if args.monitor == "wandb":
-        wandb.init(project = f"ppo_mp-{os.getpid()}-{int(time.time())}")
+        name = f'{args.env_name}_mp_{os.getpid()}-{int(time.time())}'
+        wandb.init(project = f"ppo_train", name  = name)
     else:
         # clear dir or make dir
         tensorboard_logdir = 'runs/PPO_mp_{}_seed_{}'.format(args.env_name, number, seed)
@@ -206,10 +207,10 @@ if __name__ == '__main__':
     # training variable setting
     parser.add_argument("--max_train_steps", type=int, default=200, help=" Maximum number of training steps")
     parser.add_argument("--per_batch_steps", type=int, default=500, help="max step in a round.")
-    parser.add_argument("--evaluate_freq", type=int, default=5, help="Evaluate the policy every 'evaluate_freq' steps")
+    parser.add_argument("--evaluate_freq", type=int, default=20, help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=20, help="Save frequency")
     parser.add_argument("--batch_size", type=int, default=4096, help="Batch size")
-    parser.add_argument("--mini_batch_size", type=int, default=512, help="Minibatch size")
+    parser.add_argument("--mini_batch_size", type=int, default=256, help="Minibatch size")
     parser.add_argument("--hidden_width", type=int, default=64, help="The number of neurons in hidden layers of the neural network")
     parser.add_argument("--lr_a", type=float, default=1e-3, help="Learning rate of actor")
     parser.add_argument("--lr_c", type=float, default=1e-4, help="Learning rate of critic")
