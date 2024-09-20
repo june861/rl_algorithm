@@ -16,35 +16,6 @@ from ppo.trick import orthogonal_initialization
 from torch.distributions import Categorical
 
 """ PPO Algorithm 
-PPO算法是一种基于Actor-Critic的架构， 它的代码组成和A2C架构很类似。
-
-1、 传统的A2C结构如下：
-                                    ⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅ backward ⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅  
-                                    ⬇                                                    ⬆
-    State & (R, new_State) ----> Critic ----> value -- 与真正的价值reality_value做差 --> td_e = reality_v - v
-                                                                                                    ⬇
-    State ----> Actor ---Policy--> P(s,a) ➡➡➡➡➡➡➡➡➡➡➡ 两者相加 ⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅
-                                    ⬇                             ⬇
-                                    ⬇                             ⬇
-                                    ⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅ actor_loss = Log[P(s,a)] + td_e
-
-    ** Actor Section **：由Critic网络得到的输出td_e，和Actor网络本身输出的P(s,a)做Log后相加得到了Actor部分的损失，使用该损失进行反向传播
-    ** Critic Section **: Critic部分，网络接收当前状态State，以及env.step(action)返回的奖励(Reward，简写为R)和新的状态new_State
-                                    
-2、 实际上PPO算法的Actor-Critic框架实现：
-                                    ⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅ backward ⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅  
-                                    ⬇                                                    ⬆
-    State & (r, new_State) ➡➡➡ Critic ----> value -- 与真正的价值reality_value做差 --> td_e = reality_v - v 
-                                                                                                           ⬇
-    State ➡➡➡ Actor[old_policy] ➡➡➡ P_old(s,a) ➡➡➡➡➡➡➡➡➡➡ ratio = P_new(s,a) / P_old(s,a) ➡➡ 依据式子(1)计算loss ➡➡➡➡ loss
-      ⬇                                                              ⬆                                                                   ⬇ 
-      ⬇                                                              ⬆[两者做商,得到重要性权值]                                            ⬇             
-      ⬇                                                              ⬆                                                                   ⬇ 
-      ⬇ ➡➡➡➡ Actor[new_policy] ➡➡➡ P_new(s,a) ➡➡➡➡➡➡➡➡➡ ⬆                                                                   ⬇ 
-                        ⬆                                                                                                                ⬇
-                        ⬆                                                                                                                ⬇
-                        ⬆⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅ backbard ⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬅⬇
-同时将会实现PPO的一些技巧:
 
 """
 

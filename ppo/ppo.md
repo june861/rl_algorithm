@@ -3,7 +3,6 @@
 如果被训练的agent和与环境做互动的agent（生成训练样本）是同一个的话，那么叫做on-policy(同策略)。
 如果被训练的agent和与环境做互动的agent（生成训练样本）不是同一个的话，那么叫做off-policy(异策略)。
 
-https://blog.csdn.net/qq_33302004/article/details/115666895
 ## 2. Importance Sampling（重要性采样）
 为什么要使用重要性采样呢？其实从PG算法的梯度公式可以看出来：
 $$
@@ -91,9 +90,50 @@ $$
        - 更新 $\theta$ 和 $\phi$ 以最小化总损失 $L_{total} = L_{surr}(\theta) - c_1 L_{vf}(\phi) + c_2 S[\pi_{\theta}](s_t) + ...$（其中 $S$ 是熵正则化项）  
        - 更新 $\theta_{old} \leftarrow \theta$ 
 
-## 3.3 PPO2
-    
-    
-  
+### 3.3 PPO2
+PPO2也叫做PPO-Clip，该方法不采用KL散度作为约束，而是采用逻辑上合理的思路设计目标函数，其目标函数如下：
+$$
+J^{\theta^{'}}(\theta) = \sum_{(s_t,a_t)} \min( \frac{p_\theta(a_t|s_t)}{p_{\theta^{'}}(a_t|s_t)} A^{\theta^{'}}(s_t,a_t), \gamma A^{\theta^{'}}(s_t,a_t) )
+\qquad{} (\gamma = clip(\frac{p_\theta(a_t|s_t)}{p_{\theta^{'}}(a_t|s_t)}, 1 - \epsilon, 1 + \epsilon))
+$$
+上面的式子中，clip函数是一个裁剪功能的函数，其具体的作用是将$p_\theta(a_t|s_t){p_{\theta^{'}}(a_t|s_t)}$限制在区间$[1-\epsilon,1+\epsilon]$中，clip函数的示意图1所示。PPO2的目标函数主要是希望提升累计期望回报的同时，$p_\theta(a_t|s_t)$和$p_{\theta^{'}}(a_t|s_t)$的差距不要太大，目标函数具体的实现思路如下：
+
+- A是比较优势，A>0表示比较优势大，我们要提升$p_\theta(a_t|s_t)$，如果A<0表示当前这个决策不佳，因此我们要减少$p_\theta(a_t|s_t)$。然而当A>0我们希望提升$p_\theta(a_t|s_t)$时，会受到重要性采样的约束，会使得提升$p_\theta(a_t|s_t)$的同时与$p_\theta^{'}(a_t|s_t)$的差距又不能太大。所以当$\frac{p_\theta(a_t|s_t)}{p_{\theta^{'}}(a_t|s_t)}$大到一定程度时，就必须限制它的上限，否则将会出现两个分布差距过大的情况，这一个上限在PPO2中体现为$1+\epsilon$，当$\frac{p_\theta(a_t|s_t)}{p_{\theta^{'}}(a_t|s_t)}$大于设置的上限阈值时，我们就不希望目标函数在提升$p_\theta(a_t|s_t)$上再获得收益。同理，当A<0时，我们希望减小$p_\theta(a_t|s_t)$，但是又不希望减小得过量，因此需要设置一个下限。这在PPO2中体现为$1-\epsilon$，即当$\frac{p_\theta(a_t|s_t)}{p_{\theta^{'}}(a_t|s_t)}$小于下限时，我们也不会希望目标函数在此时获得任何的收益。通过这种手段，来收获最佳期望的同时并满足重要性采样的必要条件。
+
+<center>
+    <img style="border-radius: 0.3125em;
+    box-shadow: 0 2px 4px 0 rgba(34,36,38,.12),0 2px 10px 0 rgba(34,36,38,.08);" 
+    src = "imgs/clip_func.png">
+    <br>
+    <div style="color:orange; border-bottom: 1px solid #d9d9d9;
+    display: inline-block;
+    color: #999;
+    padding: 2px;">图1 - clip函数裁剪示意图</div>
+</center>
+
+在了解clip函数之后，再对PPO2的目标函数进行分析，结合图2分析，其中假设$\frac{p_\theta(a_t|s_t)}{p_{\theta^{'}}(a_t|s_t)} $是一个递增的函数形式。可以观察到：
+
+- $\frac{p_\theta(a_t|s_t)}{p_{\theta^{'}}(a_t|s_t)} $ 对应绿色曲线
+- 蓝色的曲线是clip函数的曲线
+- 红色的曲线是最终PPO2优化函数里面的$min$取得的最小值
+
+不难看出来，在绿色的线跟蓝色的线中间，我们要取一个最小的。假设前面乘上的这个优势项A，它是大于0的话，取最小的结果，就是左侧图片中红色的这一条线。
+同理，如果A小于0的话，取最小的以后，就得到右侧侧图片中红色的这一条线
+
+<center>
+    <img style="border-radius: 0.3125em;
+    box-shadow: 0 2px 4px 0 rgba(34,36,38,.12),0 2px 10px 0 rgba(34,36,38,.08);" 
+    src = "imgs/clip_func_range.png">
+    <br>
+    <div style="color:orange; border-bottom: 1px solid #d9d9d9;
+    display: inline-block;
+    color: #999;
+    padding: 2px;">图2 - PPO2目标函数优化</div>
+</center>
 
 
+## 4. Implement of PPO2
+本节将会实现一个Actor-Critic的PPO2算法。依据第三小节中PPO2的目标函数，我们可以知道实现PPO2有几个重要的点：
+
+- 优势函数的实现
+- 
