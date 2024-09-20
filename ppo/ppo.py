@@ -4,7 +4,8 @@
 @Time    :   2024/09/12 09:11:33
 @Author  :   junewluo 
 '''
-
+import os
+import datetime
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -267,8 +268,44 @@ class PPO(object):
             step += 1
         
         return actor_total_loss / step, critic_total_loss / step
-        
-    
 
+    def checkpoint_attributes(self, only_net):
+        if only_net:
+            attr = {
+                'state_dim': self.ppo_params['state_dim'],
+                'act_dim': self.ppo_params['act_dim'],
+                'layer_nums' : self.ppo_params['layer_nums'],
+                'hidden_dims': self.ppo_params['hidden_dims'],
+                'actor': self.actor.state_dict(),
+                'critic': self.critic.state_dict(),
+            }
+        else:
+            attr = {
+                'ppo_params': self.ppo_params,
+                'actor': self.actor.state_dict(),
+                'critic': self.critic.state_dict(),
+                'actor_optim' : self.actor_optim.state_dict(),
+                'critic_optim' : self.critic_optim.state_dict(),
+            }
+        return attr
 
-        
+    @classmethod
+    def from_checkoint(cls, checkpoint):
+        agent_instance = cls(
+            checkpoint['ppo_params']
+        )
+
+        agent_instance.actor.load_state_dict(checkpoint['actor'])
+        agent_instance.critic.load_state_dict(checkpoint['critic'])
+        agent_instance.actor_optimizer.load_state_dict(checkpoint["actor_optim"])
+        agent_instance.critic_optimizer.load_state_dict(checkpoint["critic_optim"])
+
+    def save_checkpoint(self,only_net = False):
+        model_save_dir = './models/ppo_mp'
+        if not os.path.exists('./models/'):
+            os.mkdir('./models/')
+        if not os.path.exists(model_save_dir):
+            os.mkdir(model_save_dir)
+        now_time = datetime.datetime.now().strftime("%Y-%m-%d")
+        model_save_path = os.path.join(model_save_dir, f'{now_time}_{os.getpid()}_{str(only_net)}')
+        torch.save(self.checkpoint_attributes(only_net = only_net), model_save_path)

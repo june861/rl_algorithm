@@ -295,6 +295,7 @@ class PPO(object):
                 'critic_optim' : self.critic_optim.state_dict(),
             }
         return attr
+
     @classmethod
     def from_checkoint(cls, checkpoint):
         agent_instance = cls(

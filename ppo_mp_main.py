@@ -1,7 +1,5 @@
 import os
 import time
-import gym.vector
-import gym.vector
 import torch
 import numpy as np
 import gym
@@ -161,7 +159,7 @@ def main(args, number, seed):
                 writer.add_scalar(tag = f'train_actor_loss_{args.env_name}', scalar_value = a_loss, global_step = total_steps)
                 writer.add_scalar(tag = f'train_critic_loss_{args.env_name}', scalar_value = c_loss, global_step = total_steps)
         
-        fit_model_tag = False
+
         if (train_step+1) % args.evaluate_freq == 0:
             eval_times = 5
             round_count = 0
@@ -183,8 +181,6 @@ def main(args, number, seed):
                         break
                 val_reward += episode_reward
                 round_count += step
-            if val_reward / eval_times >= 15000:
-                fit_model_tag = True
             print(f'step is {train_step}, validation reward is {val_reward / eval_times}, every round count is {round_count / eval_times}')
             if args.monitor == "wandb":
                 wandb.log({'eval_reward':val_reward / eval_times, "eval_steps": (round_count / eval_times)})
@@ -208,7 +204,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for PPO")
     # env variable setting
     parser.add_argument("--env_name",type=str,default="CartPole-v1",help="The Env Name of Gym")
-    parser.add_argument("--env_num",type=int,default=30,help="The number of envs that are activated")
+    parser.add_argument("--env_num",type=int,default=4,help="The number of envs that are activated")
     parser.add_argument("--use_multiprocess",type=bool,default=False,help="use multi-process to generated frame data.")
     # training variable setting
     parser.add_argument("--max_train_steps", type=int, default=200, help=" Maximum number of training steps")
