@@ -113,8 +113,8 @@ def main(args, env_name, number, seed):
         # When the number of transitions in buffer reaches batch_size,then update
         if len(replay_buffer) >= args.batch_size:
             # print(f'step is {total_steps}, get in train, now buffer len is {len(replay_buffer)}')
-            # learn_steps = int(ppo_params['batch_size'] / ppo_params['mini_batch_size'])
-            learn_steps = 10
+            learn_steps = 1 + int(len(replay_buffer) / ppo_params['mini_batch_size'])
+            # learn_steps = 10
             a_total_loss, c_total_loss = 0.0, 0.0
             for _ in range(learn_steps):
                 a_loss, c_loss = agent.learn(replay_buffer = replay_buffer, batch_size = args.batch_size)

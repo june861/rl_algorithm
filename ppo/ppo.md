@@ -90,7 +90,7 @@ $$
        - 更新 $\theta$ 和 $\phi$ 以最小化总损失 $L_{total} = L_{surr}(\theta) - c_1 L_{vf}(\phi) + c_2 S[\pi_{\theta}](s_t) + ...$（其中 $S$ 是熵正则化项）  
        - 更新 $\theta_{old} \leftarrow \theta$ 
 
-### 3.3 PPO2
+## 3.3 PPO2
 PPO2也叫做PPO-Clip，该方法不采用KL散度作为约束，而是采用逻辑上合理的思路设计目标函数，其目标函数如下：
 $$
 J^{\theta^{'}}(\theta) = \sum_{(s_t,a_t)} \min( \frac{p_\theta(a_t|s_t)}{p_{\theta^{'}}(a_t|s_t)} A^{\theta^{'}}(s_t,a_t), \gamma A^{\theta^{'}}(s_t,a_t) )
