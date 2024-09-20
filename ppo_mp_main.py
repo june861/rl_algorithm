@@ -67,7 +67,7 @@ def main(args, number, seed):
     val_env = gym.make(args.env_name)
     eval_env = gym.make(args.env_name, render_mode = "human")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cpu')
+    # device = torch.device('cpu')
 
     state_dim = envs.single_observation_space.shape[0]
     action_dim = envs.single_action_space.n
