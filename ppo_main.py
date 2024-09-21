@@ -180,9 +180,9 @@ def main(args, env_name, number, seed):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for PPO")
     parser.add_argument("--env_name",type=str,default="CartPole-v1",choices=['CartPole-v1', 'LunarLander-v2'],help="which env to use for testing ppo")
-    parser.add_argument("--max_train_steps", type=int, default=int(500), help=" Maximum number of training steps")
-    parser.add_argument("--evaluate_freq", type=int, default=10, help="Evaluate the policy every 'evaluate_freq' steps")
-    parser.add_argument("--save_freq", type=int, default=5,  help="Save frequency")
+    parser.add_argument("--max_train_steps", type=int, default=int(2000), help=" Maximum number of training steps")
+    parser.add_argument("--evaluate_freq", type=int, default=50, help="Evaluate the policy every 'evaluate_freq' steps")
+    parser.add_argument("--save_freq", type=int, default=50,  help="Save frequency")
     parser.add_argument("--batch_size", type=int, default=2048, help="Batch size")
     parser.add_argument("--mini_batch_size", type=int, default=256,help="Minibatch size")
     parser.add_argument("--hidden_width", type=int, default=64, help="The number of neurons in hidden layers of the neural network")

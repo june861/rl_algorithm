@@ -29,6 +29,22 @@
                 "--evaluate_freq", "1",
                 "--max_train_steps", "100"
             ]
+        },
+
+        {
+            "name": "Python Run: dqn_main.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/dqn_main.py",
+            "console": "integratedTerminal",
+            "args": [
+
+                "--evaluate_freq", "1",
+                "--max_train_steps", "100",
+                "--layers","3",
+                "--hidden_dims", "10", "10",
+                "--mini_batch_size", "4"
+            ]
         }
     ]
 }

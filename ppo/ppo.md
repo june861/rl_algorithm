@@ -175,13 +175,41 @@ $$
 2. **计算TD误差**：对于每个时间步 $t$，计算 $\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)$。
 3. **累加GAE**：从 $l=0$ 开始，逐步累加 $(\gamma \lambda)^l \delta_{t+l}$ 到 $A_t^{GAE}$，直到 $l = T-t-1$。
 4. **更新**：使用计算出的 $A_t^{GAE}$ 作为PPO算法中的优势函数估计。
+具体的python实现如下：
+```python
+def cal_adv(self,states, next_states, rewards, dones):
+    """ 计算优势项
 
-#### 4. PPO算法中的使用
+    参数：
+      states : 当前环境状态
+      next_states : 采取动作后，环境返回的新状态
+      rewards : 环境返回的rewards
+      dones : 游戏终止信号
+    """
 
-在PPO算法中，优势函数 $(A_t)$ 用于计算策略损失函数 $(L^{CLIP}(\theta))$，具体形式为：
-$$
+    adv = []
+    gae = 0
+    with torch.no_grad():
+        # 获得critic对于当前状态state的Q值
+        value = self.critic(states).squeeze(1)
+        # 获得critic对于新状态next_state的Q值
+        value_ = self.critic(next_states).squeeze(1)
+        # deltas 计算了当前状态价值估计与基于未来（或终止）状态的预测价值之间的TD误差。这包括了奖励、折扣因子（gamma）、下一个状态的价值估计，以及终止标志的影响。
+        deltas = rewards + self.ppo_params['gamma'] * (1.0 - dones) * value_ - value
+        # 计算值目标，用于后续和value做mse误差为critic网络反向传播
+        v_target = rewards + self.ppo_params['gamma'] * (1.0 - dones) * value_
+        # 开始计算优势项，通过从序列末尾向前迭代（即时间反向），计算每个时间步的优势。
+        # 这里使用了GAE方法，它通过加权的方式考虑了未来多个时间步的信息，以更稳定地估计优势。
+        # lamda（self.ppo_params['lamda']）是GAE的一个超参数，用于控制未来信息对当前优势估计的权重。
+        # 迭代中，每个时间步的优势gae都是当前TD误差delta与上一时间步的gae值的加权和，加权系数为gamma * lamda，并且如果当前时间步是终止状态，则不再考虑未来的信息（done为True时，相当于将GAE的未来部分截断）
+        for delta, done in zip(reversed(deltas.cpu().flatten().numpy()), reversed(dones.cpu().flatten().numpy())):
+            # gae = delta + self.ppo_params['gamma'] * self.ppo_params['lamda'] * gae * (1.0 - done)
+            gae = delta + self.ppo_params['gamma'] * self.ppo_params['lamda'] * gae
+            adv.insert(0, gae)
+        adv = torch.tensor(adv, dtype=torch.float).to(self.device).view(-1, 1)
+        # v_target = rewards + self.ppo_params['gamma'] * (1.0 - dones) * value_
+        if self.ppo_params['use_adv_norm']:  # Trick 1:advantage normalization
+            adv = ((adv - adv.mean()) / (adv.std() + 1e-8))
 
-L^{CLIP}(\theta) = \hat{\mathbb{E}}_t \left[ \min \left( r_t(\theta) A_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) A_t \right) \right]
-
-$$
-其中，$(r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\theta_{\text{old}}}(a_t|s_t)})$ 是新旧策略之比，$\epsilon$ 是一个超参数，用于限制策略更新的幅度。
+    return adv, v_target.unsqueeze(1)
+```
