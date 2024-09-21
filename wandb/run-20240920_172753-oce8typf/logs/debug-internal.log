@@ -1,9 +1,0 @@
-{"time":"2024-09-20T17:27:53.4825813+08:00","level":"INFO","msg":"using version","core version":"0.18.0"}
-{"time":"2024-09-20T17:27:53.4825813+08:00","level":"INFO","msg":"created symlink","path":"F:\\Repository\\rl_algorithm\\wandb\\run-20240920_172753-oce8typf\\logs\\debug-core.log"}
-{"time":"2024-09-20T17:27:53.4831008+08:00","level":"INFO","msg":"using version","core version":"0.18.0"}
-{"time":"2024-09-20T17:27:53.4831008+08:00","level":"INFO","msg":"created symlink","path":"F:\\Repository\\rl_algorithm\\wandb\\run-20240920_172753-oce8typf\\logs\\debug-core.log"}
-{"time":"2024-09-20T17:27:53.4881584+08:00","level":"INFO","msg":"created new stream","id":"oce8typf"}
-{"time":"2024-09-20T17:27:53.4881584+08:00","level":"INFO","msg":"stream: started","id":"oce8typf"}
-{"time":"2024-09-20T17:27:53.4881584+08:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"oce8typf"}}
-{"time":"2024-09-20T17:27:53.4881584+08:00","level":"INFO","msg":"sender: started","stream_id":{"value":"oce8typf"}}
-{"time":"2024-09-20T17:27:53.4881584+08:00","level":"INFO","msg":"handler: started","stream_id":{"value":"oce8typf"}}
