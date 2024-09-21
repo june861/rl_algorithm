@@ -94,7 +94,7 @@ class DQN(object):
 
 
 
-    def select_action(self, obs):
+    def select_action(self, obs, eval_mode = False):
         """ selection action from random or q_net.
 
         Args:
@@ -103,25 +103,19 @@ class DQN(object):
         Returns:
             _int_: the action of agent taking.
         """
-        if random.random() < self.dqn_params['epsilon']:
-            if len(obs.shape) == 1:
-                first_dim = 1
-            else:
-                first_dim = obs.shape[0]
-            out = torch.Tensor(np.random.uniform(-1, 1, size=(first_dim, self.act_dim)))
-            # print(f'random: out is {out}, out.shape is {out.shape}')
+        obs = torch.Tensor(obs).to(self.dqn_params['device'])
+        if np.random.uniform() <= 1 - self.dqn_params['epsilon'] or eval_mode:
+            action_value = self.q_net(obs)
+            if len(action_value.shape) == 1:
+                action_value = action_value.unsqueeze(0)
+            if self.dqn_params['device'].type != 'cpu':
+                action_value = action_value.cpu()
+            action = torch.max(action_value, dim = 1)[1].data.numpy()
         else:
-            with torch.no_grad():
-                obs = torch.Tensor(obs).to(self.dqn_params['device'])
-                out = self.q_net(obs)
-                if len(out.shape) == 1:
-                    out = out.unsqueeze(0)
-                # print(f'random: out is {out}, out.shape is {out.shape}')
-        logprob = torch.softmax(out, dim = 1)
-        dist = Categorical(logprob)
-        action = dist.sample()
-        
-        return action.cpu().numpy()
+            dim = obs.shape[0] if len(obs.shape) > 1 else 1
+            action = np.random.randint(0, self.act_dim, size=(dim,))
+        return action
+
 
     def set_target_network(self):
         self.target_net.load_state_dict(self.q_net.state_dict())
@@ -133,15 +127,15 @@ class DQN(object):
         # convert to tensor
         obs = torch.Tensor(obs).to(self.dqn_params['device'])
         actions = torch.LongTensor(actions).to(self.dqn_params['device'])
-        rewards = torch.Tensor(rewards).to(self.dqn_params['device'])
+        rewards = torch.Tensor(rewards).to(self.dqn_params['device']).view(-1,1)
         next_obs = torch.Tensor(next_obs).to(self.dqn_params['device'])
-        dones = torch.Tensor(dones).to(self.dqn_params['device'])
+        dones = torch.Tensor(dones).to(self.dqn_params['device']).view(-1,1)
 
         # calculate Q-Value
-        Q = self.q_net(obs).gather(1, actions)
+        Q = self.q_net(obs).gather(1, actions.unsqueeze(1))
         Q_ = self.target_net(next_obs).max(1)[0].view(-1, 1)
-        Q_ = rewards + self.dqn_params['gamma'] * Q_ * (1 - dones)
-        
+        Q_ = rewards+ self.dqn_params['gamma'] * Q_ * (1 - dones)
+
         # epsilon decay
         # self.dqn_params['epsilon'] = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
 

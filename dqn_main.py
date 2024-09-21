@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser("DQN Parameter Setting")
 
 # env setting
 parser.add_argument("--env_name",type=str,default="CartPole-v1",help="The Env Name of Gym")
-parser.add_argument("--env_num",type=int,default=10,help="The number of envs that are activated")
+parser.add_argument("--env_num",type=int,default=50,help="The number of envs that are activated")
 parser.add_argument("--max_eposide_step", type=int, default=500, help="the max step in one eposide game")
 parser.add_argument("--seed", type=int, default=1, help="random seed")
 # training setting
@@ -124,7 +124,7 @@ def main(args):
                         loss = loss
                         )
             train_total_steps += 1
-
+            # set target network parameter 
             if (k+1) % 50 == 0:
                 dqn_agent.set_target_network()
         
