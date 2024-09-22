@@ -82,15 +82,17 @@ class DQN(object):
         self.target_net = QNet(state_dim = self.state_dim, hidden_dims = hidden_dims, act_dim = self.act_dim).to(args.device)
         # make target network parameters equal to q network
         self.target_net.load_state_dict(self.q_net.state_dict())
-        self.target_net.requires_grad_ = False
         # build some parameters for dqn training.
         self.dqn_params = {
             'epsilon': args.epsilon,
+            'epsilon_min': args.epsilon_min,
+            'epsilon_decay': args.epsilon_decay,
             'gamma': args.gamma,
             'mini_batch_size' : args.mini_batch_size,
             'lr': args.lr,
             'device': args.device,
             'update_target' : args.update_target,
+
         }
         self.optimizer = optim.Adam(params = self.q_net.parameters(), lr = self.dqn_params['lr'])
         # record update number
@@ -108,27 +110,31 @@ class DQN(object):
             _int_: the action of agent taking.
         """
         obs = torch.Tensor(obs).to(self.dqn_params['device'])
-        if np.random.uniform() <= self.dqn_params['epsilon'] or eval_mode:
+        if np.random.uniform() <= 1 - self.dqn_params['epsilon'] or eval_mode:
             action_value = self.q_net(obs)
             if len(action_value.shape) == 1:
                 action_value = action_value.unsqueeze(0)
             if self.dqn_params['device'].type != 'cpu':
                 action_value = action_value.cpu()
             action = torch.max(action_value, dim = 1)[1].data.numpy()
+            # print(f"model select is {action}")
         else:
             dim = obs.shape[0] if len(obs.shape) > 1 else 1
             action = np.random.randint(0, self.act_dim, size=(dim,))
+            # print(f"random select is {action}")
         return action
 
+    def update_epsilon(self):
+        self.dqn_params['epsilon'] = max(self.dqn_params['epsilon_min'], self.dqn_params['epsilon'] - self.dqn_params['epsilon_decay'])
 
     def set_target_network(self):
         self.target_net.load_state_dict(self.q_net.state_dict())
 
     def learn(self, relay_buffer: RelayBuffer):
         
-        self.update_count += 1
+       
         # sample all data from buffer
-        obs, actions, rewards, next_obs, dones = relay_buffer.sample(mini_batch_size = self.dqn_params['mini_batch_size'])
+        obs, actions, rewards, next_obs, dones = relay_buffer.sample(mini_batch_size = len(relay_buffer))
         # convert to tensor
         obs = torch.Tensor(obs).to(self.dqn_params['device'])
         actions = torch.LongTensor(actions).to(self.dqn_params['device'])
@@ -136,22 +142,25 @@ class DQN(object):
         next_obs = torch.Tensor(next_obs).to(self.dqn_params['device'])
         dones = torch.Tensor(dones).to(self.dqn_params['device']).view(-1,1)
 
-        # calculate Q-Value
-        Q = self.q_net(obs).gather(1, actions.unsqueeze(1))
-        Q_ = self.target_net(next_obs).max(1)[0].view(-1, 1)
-        Q_ = rewards + self.dqn_params['gamma'] * Q_ * (1 - dones)
+        for index in BatchSampler(SubsetRandomSampler(range(len(relay_buffer))), self.dqn_params['mini_batch_size'], False):
+            mini_obs, mini_actions, mini_rewards, mini_next_obs, mini_dones = obs[index], actions[index], rewards[index], next_obs[index], dones[index]
+            self.update_count += 1
+            # calculate Q-Value
+            Q = self.q_net(mini_obs).gather(1, mini_actions.unsqueeze(1))
+            Q_ = self.target_net(mini_next_obs).max(1)[0].view(-1, 1)
+            Q_ = mini_rewards + self.dqn_params['gamma'] * Q_ * (1 - mini_dones)
 
-        # epsilon decay
-        # self.dqn_params['epsilon'] = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
+            # epsilon decay
+            # self.dqn_params['epsilon'] = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
 
-        # cal loss & parameter step
-        self.optimizer.zero_grad()
-        q_loss = F.mse_loss(Q, Q_)
-        q_loss.mean().backward()
-        self.optimizer.step()
+            # cal loss & parameter step
+            self.optimizer.zero_grad()
+            q_loss = F.mse_loss(Q, Q_)
+            q_loss.mean().backward()
+            self.optimizer.step()
 
-        # update target network
-        if self.update_count % self.dqn_params['update_target']:
-            self.set_target_network()
+            # update target network
+            if self.update_count % self.dqn_params['update_target']:
+                self.set_target_network()
 
         return q_loss.cpu().detach().numpy().item()
