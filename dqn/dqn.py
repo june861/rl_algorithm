@@ -89,8 +89,11 @@ class DQN(object):
             'mini_batch_size' : args.mini_batch_size,
             'lr': args.lr,
             'device': args.device,
+            'update_target' : args.update_target,
         }
         self.optimizer = optim.Adam(params = self.q_net.parameters(), lr = self.dqn_params['lr'])
+        # record update number
+        self.update_count = 0
 
 
 
@@ -104,7 +107,7 @@ class DQN(object):
             _int_: the action of agent taking.
         """
         obs = torch.Tensor(obs).to(self.dqn_params['device'])
-        if np.random.uniform() <= 1 - self.dqn_params['epsilon'] or eval_mode:
+        if np.random.uniform() <= self.dqn_params['epsilon'] or eval_mode:
             action_value = self.q_net(obs)
             if len(action_value.shape) == 1:
                 action_value = action_value.unsqueeze(0)
@@ -121,7 +124,8 @@ class DQN(object):
         self.target_net.load_state_dict(self.q_net.state_dict())
 
     def learn(self, relay_buffer: RelayBuffer):
-
+        
+        self.update_count += 1
         # sample all data from buffer
         obs, actions, rewards, next_obs, dones = relay_buffer.sample(mini_batch_size = self.dqn_params['mini_batch_size'])
         # convert to tensor
@@ -134,7 +138,7 @@ class DQN(object):
         # calculate Q-Value
         Q = self.q_net(obs).gather(1, actions.unsqueeze(1))
         Q_ = self.target_net(next_obs).max(1)[0].view(-1, 1)
-        Q_ = rewards+ self.dqn_params['gamma'] * Q_ * (1 - dones)
+        Q_ = rewards + self.dqn_params['gamma'] * Q_ * (1 - dones)
 
         # epsilon decay
         # self.dqn_params['epsilon'] = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
@@ -142,7 +146,11 @@ class DQN(object):
         # cal loss & parameter step
         self.optimizer.zero_grad()
         q_loss = F.mse_loss(Q, Q_)
-        q_loss.backward()
+        q_loss.mean().backward()
         self.optimizer.step()
+
+        # update target network
+        if self.update_count % self.dqn_params['update_target']:
+            self.set_target_network()
 
         return q_loss.cpu().detach().numpy().item()

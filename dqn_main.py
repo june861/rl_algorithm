@@ -15,6 +15,7 @@ import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 from dqn.dqn import DQN, RelayBuffer
 from share_func import make_env, clear_folder
+from dqn.trick import lr_decay
 
 parser = argparse.ArgumentParser("DQN Parameter Setting")
 
@@ -25,14 +26,15 @@ parser.add_argument("--max_eposide_step", type=int, default=500, help="the max s
 parser.add_argument("--seed", type=int, default=1, help="random seed")
 # training setting
 parser.add_argument("--max_train_steps", type=int, default=500, help="the max train steps")
-parser.add_argument("--evaluate_freq", type=int, default=50, help="evaluate frequency")
+parser.add_argument("--evaluate_freq", type=int, default=20, help="evaluate frequency")
 parser.add_argument("--evaluate_times", type=int, default=3, help="evaluate times in one evaluation eposide")
-parser.add_argument("--lr", type=float, default=1e-3, help="learning rate of Deep Q-network")
-parser.add_argument("--gamma", type=float, default=0.95, help="discounted element")
-parser.add_argument("--epsilon", type=float, default=0.2,help="The probability of randomly generated actions")
-parser.add_argument("--mini_batch_size",type=int,default=128,help="mini batch size to sample from buffer")
+parser.add_argument("--lr", type=float, default=2e-3, help="learning rate of Deep Q-network")
+parser.add_argument("--gamma", type=float, default=0.9, help="discounted element")
+parser.add_argument("--epsilon", type=float, default=0.9,help="The probability of randomly generated actions")
+parser.add_argument("--mini_batch_size",type=int,default=32,help="mini batch size to sample from buffer")
 parser.add_argument("--capacity",type=int,default=int(10e5),help="the capacity of buffer to store data")
 parser.add_argument("--use_lr_decay", type=bool, default=True, help="use learning rate decay")
+parser.add_argument("--update_target", type=int, default=100, help="update target network")
 # network setting
 parser.add_argument("--layers",type=int,default=3,help="the number of layer in q_net")
 parser.add_argument("--hidden_dims", type=int, nargs='+', default=[128, 128], help='Sizes of the hidden layers (e.g., --hidden_sizes 50 30)')
@@ -107,6 +109,8 @@ def main(args):
         for k in range(args.max_eposide_step):
             action = dqn_agent.select_action(obs = obs)
             obs_, reward, done, truncation, _ = env.step(action)
+            if len(relay_buffer) == relay_buffer.capacity:
+                relay_buffer.clear()
             for i in range(args.env_num):
                 single_obs = obs[i]
                 single_obs_ = obs_[i]
@@ -124,10 +128,12 @@ def main(args):
                         loss = loss
                         )
             train_total_steps += 1
-            # set target network parameter 
-            if (k+1) % 50 == 0:
-                dqn_agent.set_target_network()
-        
+
+        if args.use_lr_decay :
+            cur_lr = dqn_agent.dqn_params['lr']
+            new_lr = lr_decay(dqn_agent.optimizer, cur_step = step, max_step = args.max_train_steps, cur_lr = cur_lr)
+            dqn_agent.dqn_params['lr'] =new_lr
+
         # evaluate process
         if step % args.evaluate_freq == 0:
             eval_times = args.evaluate_times
@@ -153,7 +159,7 @@ def main(args):
                         eval_reward = total_rewards / eval_times,
                         eposide_steps = eval_total_steps / eval_times,
                     )
-
+            eval_total_freq += 1
 if __name__ == '__main__':
     args = parser.parse_args()
     main(args = args)
