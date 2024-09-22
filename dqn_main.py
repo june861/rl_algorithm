@@ -17,6 +17,7 @@ from dqn.dqn import DQN, RelayBuffer
 from share_func import make_env, clear_folder
 from dqn.trick import lr_decay
 
+
 parser = argparse.ArgumentParser("DQN Parameter Setting")
 
 # env setting
@@ -25,16 +26,19 @@ parser.add_argument("--env_num",type=int,default=50,help="The number of envs tha
 parser.add_argument("--max_eposide_step", type=int, default=500, help="the max step in one eposide game")
 parser.add_argument("--seed", type=int, default=1, help="random seed")
 # training setting
-parser.add_argument("--max_train_steps", type=int, default=500, help="the max train steps")
-parser.add_argument("--evaluate_freq", type=int, default=20, help="evaluate frequency")
+parser.add_argument("--max_train_steps", type=int, default=5000, help="the max train steps")
+parser.add_argument("--learn_freq", type=int, default=5, help="the q net learning frequency")
+parser.add_argument("--evaluate_freq", type=int, default=50, help="evaluate frequency")
 parser.add_argument("--evaluate_times", type=int, default=3, help="evaluate times in one evaluation eposide")
 parser.add_argument("--lr", type=float, default=2e-3, help="learning rate of Deep Q-network")
 parser.add_argument("--gamma", type=float, default=0.9, help="discounted element")
-parser.add_argument("--epsilon", type=float, default=0.9,help="The probability of randomly generated actions")
-parser.add_argument("--mini_batch_size",type=int,default=32,help="mini batch size to sample from buffer")
+parser.add_argument("--epsilon", type=float, default=0.4,help="The probability of randomly generated actions")
+parser.add_argument("--epsilon_min", type=float, default=1e-3,help="The minimum probability of randomly generated actions")
+parser.add_argument("--epsilon_decay", type=float, default=1e-4)
+parser.add_argument("--mini_batch_size",type=int,default=512,help="mini batch size to sample from buffer")
 parser.add_argument("--capacity",type=int,default=int(10e5),help="the capacity of buffer to store data")
 parser.add_argument("--use_lr_decay", type=bool, default=True, help="use learning rate decay")
-parser.add_argument("--update_target", type=int, default=100, help="update target network")
+parser.add_argument("--update_target", type=int, default=200, help="update target network")
 # network setting
 parser.add_argument("--layers",type=int,default=3,help="the number of layer in q_net")
 parser.add_argument("--hidden_dims", type=int, nargs='+', default=[128, 128], help='Sizes of the hidden layers (e.g., --hidden_sizes 50 30)')
@@ -106,11 +110,14 @@ def main(args):
     for step in range(args.max_train_steps):
         obs, _ = env.reset()
         done = np.zeros(args.env_num)
+
+        # 重新采样数据
+        if len(relay_buffer) == relay_buffer.capacity:
+            relay_buffer.clear()
+
         for k in range(args.max_eposide_step):
             action = dqn_agent.select_action(obs = obs)
             obs_, reward, done, truncation, _ = env.step(action)
-            if len(relay_buffer) == relay_buffer.capacity:
-                relay_buffer.clear()
             for i in range(args.env_num):
                 single_obs = obs[i]
                 single_obs_ = obs_[i]
@@ -118,16 +125,18 @@ def main(args):
                 single_done = done[i]
                 single_action = action[i]
                 relay_buffer.add(single_obs, single_action, single_reward, single_obs_, single_done)
-                obs = obs_
-            loss = dqn_agent.learn(relay_buffer = relay_buffer)
-            write_metric(env_name = args.env_name, 
-                        use_wandb = args.wandb, 
-                        use_tensorboard = args.tensorboard, 
-                        writer = writer,
-                        global_step = train_total_steps,
-                        loss = loss
-                        )
-            train_total_steps += 1
+            if (k+1) % args.learn_freq == 0:     
+                loss = dqn_agent.learn(relay_buffer = relay_buffer)
+                write_metric(env_name = args.env_name, 
+                            use_wandb = args.wandb, 
+                            use_tensorboard = args.tensorboard, 
+                            writer = writer,
+                            global_step = train_total_steps,
+                            loss = loss
+                            )
+                train_total_steps += 1
+                dqn_agent.update_epsilon()
+            obs = obs_
 
         if args.use_lr_decay :
             cur_lr = dqn_agent.dqn_params['lr']
@@ -136,6 +145,7 @@ def main(args):
 
         # evaluate process
         if step % args.evaluate_freq == 0:
+            print(f'q_net has been trained {train_total_steps} times')
             eval_times = args.evaluate_times
             total_rewards = 0.0
             eval_total_steps = 0
@@ -149,7 +159,7 @@ def main(args):
                     obs = obs_
                     total_rewards += reward
                     eval_total_steps += 1
-            print(f'env:{args.env_name}, eposide rewards is {total_rewards / eval_times}, eposide step is {eval_total_steps / eval_times}')
+            print(f'env:{args.env_name}, eval num is {eval_total_freq}, eposide rewards is {round(total_rewards / eval_times, 2)}, eposide step is {round(eval_total_steps / eval_times, 2)}')
             write_metric(
                         env_name = args.env_name, 
                         use_wandb = args.wandb, 
