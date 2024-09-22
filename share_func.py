@@ -107,6 +107,9 @@ def display_frames_as_gif(frames, gif_name):
     Args:
         frames (_list_): frame data.
     """
+    if not os.path.exists("./gifs/"):
+        os.mkdir("./gifs/")
+
     patch = plt.imshow(frames[0])
     plt.axis("off")
     def animate(i):
@@ -114,7 +117,7 @@ def display_frames_as_gif(frames, gif_name):
     # 6s内播放完gif
     fps = len(frames) // 6
     anim = animation.FuncAnimation(plt.gcf(), animate, frames = len(frames), interval = 5)
-    anim.save(gif_name, writer="pillow", fps = 120)
+    anim.save(os.path.join("./gifs/",gif_name), writer="pillow", fps = 120)
 
 def run2gif(env, agent, gif_name):
     
