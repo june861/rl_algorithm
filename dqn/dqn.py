@@ -82,6 +82,7 @@ class DQN(object):
         self.target_net = QNet(state_dim = self.state_dim, hidden_dims = hidden_dims, act_dim = self.act_dim).to(args.device)
         # make target network parameters equal to q network
         self.target_net.load_state_dict(self.q_net.state_dict())
+        self.target_net.requires_grad_ = False
         # build some parameters for dqn training.
         self.dqn_params = {
             'epsilon': args.epsilon,

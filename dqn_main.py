@@ -118,16 +118,15 @@ def main(args):
                 single_done = done[i]
                 single_action = action[i]
                 relay_buffer.add(single_obs, single_action, single_reward, single_obs_, single_done)
-                obs = obs_
-            loss = dqn_agent.learn(relay_buffer = relay_buffer)
-            write_metric(env_name = args.env_name, 
-                        use_wandb = args.wandb, 
-                        use_tensorboard = args.tensorboard, 
-                        writer = writer,
-                        global_step = train_total_steps,
-                        loss = loss
-                        )
-            train_total_steps += 1
+            obs = obs_
+        loss = dqn_agent.learn(relay_buffer = relay_buffer)
+        write_metric(env_name = args.env_name, 
+                    use_wandb = args.wandb, 
+                    use_tensorboard = args.tensorboard, 
+                    writer = writer,
+                    global_step = train_total_steps,
+                    loss = loss
+                    )
 
         if args.use_lr_decay :
             cur_lr = dqn_agent.dqn_params['lr']
@@ -149,7 +148,7 @@ def main(args):
                     obs = obs_
                     total_rewards += reward
                     eval_total_steps += 1
-            print(f'env:{args.env_name}, eposide rewards is {total_rewards / eval_times}, eposide step is {eval_total_steps / eval_times}')
+            print(f'{args.env_name} eval, evaluate num is {eval_total_freq}, eposide rewards is {total_rewards / eval_times}, eposide step is {eval_total_steps / eval_times}')
             write_metric(
                         env_name = args.env_name, 
                         use_wandb = args.wandb, 
