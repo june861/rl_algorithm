@@ -21,7 +21,7 @@ from env.flappy_bird import FlappyBirdWrapper
 parser = argparse.ArgumentParser("DQN Parameter Setting")
 
 # env setting
-parser.add_argument("--env_name",type=str,default="CartPole-v1",choices = ['BipedalWalker-v2','CartPole-v1', 'LunarLander-v2'],help="The Env Name of Gym")
+parser.add_argument("--env_name",type=str,default="CartPole-v1",choices = ['BipedalWalker-v3','CartPole-v1', 'LunarLander-v2'],help="The Env Name of Gym")
 parser.add_argument("--env_num",type=int,default=50,help="The number of envs that are activated")
 parser.add_argument("--max_eposide_step", type=int, default=500, help="the max step in one eposide game")
 parser.add_argument("--seed", type=int, default=1, help="random seed")
@@ -36,7 +36,7 @@ parser.add_argument("--epsilon", type=float, default=0.4,help="The probability o
 parser.add_argument("--epsilon_min", type=float, default=1e-3,help="The minimum probability of randomly generated actions")
 parser.add_argument("--epsilon_decay", type=float, default=1e-4)
 parser.add_argument("--mini_batch_size",type=int,default=512,help="mini batch size to sample from buffer")
-parser.add_argument("--capacity",type=int,default=int(10e4),help="the capacity of buffer to store data")
+parser.add_argument("--capacity",type=int,default=int(5000 ),help="the capacity of buffer to store data")
 parser.add_argument("--use_lr_decay", type=bool, default=True, help="use learning rate decay")
 parser.add_argument("--update_target", type=int, default=200, help="update target network")
 # network setting
@@ -58,7 +58,7 @@ def build_env(env_name, env_num, seed):
     if env_name == "FlappyBird":
         eval_env = FlappyBirdWrapper()
         envs = FlappyBirdWrapper()
-    elif env_name in ['CartPole-v1', 'LunarLander-v2']:
+    elif env_name in ['CartPole-v1', 'LunarLander-v2','BipedalWalker-v3']:
         eval_env = gym.make(args.env_name, render_mode = 'rgb_array')
         train_envs = [ make_env(env_name = args.env_name, seed = args.seed, idx = i, run_name = f'{env_name}_video{i}') for i in range(env_num) ]
         envs = gym.vector.SyncVectorEnv(train_envs)
@@ -132,7 +132,8 @@ def main(args):
                 single_done = done[i]
                 single_action = action[i]
                 relay_buffer.add(single_obs, single_action, single_reward, single_obs_, single_done)
-            if (k+1) % args.learn_freq == 0:     
+            if (k+1) % args.learn_freq == 0:
+                print(f'k = {k+1}, ')
                 loss = dqn_agent.learn(relay_buffer = relay_buffer)
                 write_metric(env_name = args.env_name, 
                             use_wandb = args.wandb, 
