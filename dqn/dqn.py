@@ -141,10 +141,10 @@ class DQN(object):
         rewards = torch.Tensor(rewards).to(self.dqn_params['device']).view(-1,1)
         next_obs = torch.Tensor(next_obs).to(self.dqn_params['device'])
         dones = torch.Tensor(dones).to(self.dqn_params['device']).view(-1,1)
-
+        
         for index in BatchSampler(SubsetRandomSampler(range(len(relay_buffer))), self.dqn_params['mini_batch_size'], False):
             mini_obs, mini_actions, mini_rewards, mini_next_obs, mini_dones = obs[index], actions[index], rewards[index], next_obs[index], dones[index]
-            self.update_count += 1
+            
             # calculate Q-Value
             Q = self.q_net(mini_obs).gather(1, mini_actions.unsqueeze(1))
             Q_ = self.target_net(mini_next_obs).max(1)[0].view(-1, 1)
@@ -159,8 +159,9 @@ class DQN(object):
             q_loss.mean().backward()
             self.optimizer.step()
 
-            # update target network
-            if self.update_count % self.dqn_params['update_target']:
-                self.set_target_network()
+        # update target network
+        self.update_count += 1
+        if self.update_count % self.dqn_params['update_target']:
+            self.set_target_network()
 
         return q_loss.cpu().detach().numpy().item()

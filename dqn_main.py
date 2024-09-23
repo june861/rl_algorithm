@@ -16,12 +16,12 @@ from torch.utils.tensorboard import SummaryWriter
 from dqn.dqn import DQN, RelayBuffer
 from share_func import make_env, clear_folder
 from dqn.trick import lr_decay
-
+from env.flappy_bird import FlappyBirdWrapper
 
 parser = argparse.ArgumentParser("DQN Parameter Setting")
 
 # env setting
-parser.add_argument("--env_name",type=str,default="CartPole-v1",help="The Env Name of Gym")
+parser.add_argument("--env_name",type=str,default="CartPole-v1",choices = ['BipedalWalker-v2','CartPole-v1', 'LunarLander-v2'],help="The Env Name of Gym")
 parser.add_argument("--env_num",type=int,default=50,help="The number of envs that are activated")
 parser.add_argument("--max_eposide_step", type=int, default=500, help="the max step in one eposide game")
 parser.add_argument("--seed", type=int, default=1, help="random seed")
@@ -36,7 +36,7 @@ parser.add_argument("--epsilon", type=float, default=0.4,help="The probability o
 parser.add_argument("--epsilon_min", type=float, default=1e-3,help="The minimum probability of randomly generated actions")
 parser.add_argument("--epsilon_decay", type=float, default=1e-4)
 parser.add_argument("--mini_batch_size",type=int,default=512,help="mini batch size to sample from buffer")
-parser.add_argument("--capacity",type=int,default=int(10e5),help="the capacity of buffer to store data")
+parser.add_argument("--capacity",type=int,default=int(10e4),help="the capacity of buffer to store data")
 parser.add_argument("--use_lr_decay", type=bool, default=True, help="use learning rate decay")
 parser.add_argument("--update_target", type=int, default=200, help="update target network")
 # network setting
@@ -53,20 +53,27 @@ def write_metric(env_name, use_wandb, use_tensorboard, writer, global_step, **kw
         for key,val in kwargs.items():
             writer.add_scalar(tag = f'{env_name}_{key}', scalar_value = val, global_step = global_step)
 
+def build_env(env_name, env_num, seed):
+    # build envs
+    if env_name == "FlappyBird":
+        eval_env = FlappyBirdWrapper()
+        envs = FlappyBirdWrapper()
+    elif env_name in ['CartPole-v1', 'LunarLander-v2']:
+        eval_env = gym.make(args.env_name, render_mode = 'rgb_array')
+        train_envs = [ make_env(env_name = args.env_name, seed = args.seed, idx = i, run_name = f'{env_name}_video{i}') for i in range(env_num) ]
+        envs = gym.vector.SyncVectorEnv(train_envs)
+    return eval_env, envs
 
 def main(args):
     # Set random seed
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-    # build envs
-    eval_env = gym.make(args.env_name, render_mode = 'rgb_array')
+    # 
     if args.env_num <= 0:
         args.env_num = 1
 
-    train_envs = [ make_env(env_name = args.env_name, seed = args.seed, idx = i, run_name = f'{args.env_name}_video{i}') for i in range(args.env_num) ]
-    env = gym.vector.SyncVectorEnv(train_envs)
-
+    eval_env, env = build_env(env_name = args.env_name, env_num = args.env_num, seed = args.seed)
 
     # set some useful parameter
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -145,6 +152,8 @@ def main(args):
 
         # evaluate process
         if step % args.evaluate_freq == 0:
+            if eval_total_freq == 1:
+                print()
             print(f'q_net has been trained {train_total_steps} times')
             eval_times = args.evaluate_times
             total_rewards = 0.0

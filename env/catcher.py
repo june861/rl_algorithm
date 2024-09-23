@@ -11,7 +11,8 @@ from gym import Env, spaces
 from ple import PLE
 from ple.games import Catcher
 
-class Catcher(Env):
+#TODO(junewluo) 2024/09/23 Need to Finish
+class CatcherWrapper(Env):
     # 如果想把画面渲染出来，就传参display_screen=True
     def __init__(self, **kwargs):
         self.game = Catcher()
