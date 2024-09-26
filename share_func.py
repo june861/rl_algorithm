@@ -9,6 +9,8 @@ import gym
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from env.flappy_bird import FlappyBirdWrapper
+from env.catcher import CatcherWrapper
 
 def clear_folder(folder_path, rm_file = True, rm_dir = True):
     """ remove dirs and files from the folder_path.
@@ -54,16 +56,24 @@ def make_env(env_name, seed, idx, run_name, capture_video = False):
     Returns:
         _type_: return env .
     """
-    def chunk():
-        env = gym.make(env_name)
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        # env.seed(seed)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
-        return env
+    if env_name in ['CartPole-v1', 'LunarLander-v2','BipedalWalker-v3']:
+        def chunk():
+            env = gym.make(env_name)
+            env = gym.wrappers.RecordEpisodeStatistics(env)
+            if capture_video:
+                if idx == 0:
+                    env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+            # env.seed(seed)
+            env.action_space.seed(seed)
+            env.observation_space.seed(seed)
+            return env
+    elif env_name in ['FlappyBird','Catcher']:
+        def chunk():
+            if env_name == 'FlappyBird':
+                env = FlappyBirdWrapper()
+            elif env_name == "Catcher":
+                env = CatcherWrapper()
+            return env
     return chunk
 
 
