@@ -160,8 +160,6 @@ def main(args):
 
         # evaluate process
         if step % args.evaluate_freq == 0:
-            if eval_total_freq == 1:
-                print()
             print(f'q_net has been trained {train_total_steps} times')
             eval_times = args.evaluate_times
             total_rewards = 0.0
