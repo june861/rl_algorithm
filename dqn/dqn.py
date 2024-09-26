@@ -54,9 +54,9 @@ class RelayBuffer(object):
         data = (obs, action, reward, next_obs, done)
         if len(self.buffer) < self.capacity:
             self.buffer.append(data)
-            return 1
-        return 0
-
+        else:
+            self.buffer.pop(0)
+            self.buffer.append(data)
 
     def sample(self, mini_batch_size):
         batch = random.sample(self.buffer, min(len(self.buffer), mini_batch_size))
@@ -88,6 +88,7 @@ class DQN(object):
             'epsilon_min': args.epsilon_min,
             'epsilon_decay': args.epsilon_decay,
             'gamma': args.gamma,
+            'batch_size': args.batch_size,
             'mini_batch_size' : args.mini_batch_size,
             'lr': args.lr,
             'device': args.device,
@@ -132,9 +133,10 @@ class DQN(object):
 
     def learn(self, relay_buffer: RelayBuffer):
         
+        bacth_size = min(len(relay_buffer), self.dqn_params['batch_size'])
        
         # sample all data from buffer
-        obs, actions, rewards, next_obs, dones = relay_buffer.sample(mini_batch_size = len(relay_buffer))
+        obs, actions, rewards, next_obs, dones = relay_buffer.sample(mini_batch_size = bacth_size)
         # convert to tensor
         obs = torch.Tensor(obs).to(self.dqn_params['device'])
         actions = torch.LongTensor(actions).to(self.dqn_params['device'])
@@ -142,7 +144,7 @@ class DQN(object):
         next_obs = torch.Tensor(next_obs).to(self.dqn_params['device'])
         dones = torch.Tensor(dones).to(self.dqn_params['device']).view(-1,1)
         
-        for index in BatchSampler(SubsetRandomSampler(range(len(relay_buffer))), self.dqn_params['mini_batch_size'], False):
+        for index in BatchSampler(SubsetRandomSampler(range(bacth_size)), self.dqn_params['mini_batch_size'], False):
             mini_obs, mini_actions, mini_rewards, mini_next_obs, mini_dones = obs[index], actions[index], rewards[index], next_obs[index], dones[index]
             
             # calculate Q-Value
