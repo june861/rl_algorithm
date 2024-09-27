@@ -5,7 +5,7 @@
 @Author  :   junewluo 
 '''
 
-import os
+import numpy as np
 import numpy as np
 from gym import Env, spaces
 from ple import PLE
@@ -55,5 +55,12 @@ class FlappyBirdWrapper(Env):
     def seed(self, *args, **kwargs):
         pass
 
-    def render(self, *args, **kwargs):
-        pass
+    def render(self,*args, **kwargs):
+        """ default return rgb array
+        """
+        rgb_array = self.p.getScreenRGB()
+        # 上下翻转
+        rgb_array = np.rot90(rgb_array, k = -1)
+        # 左右翻转
+        rgb_array = np.flip(rgb_array, axis = 1)
+        return rgb_array

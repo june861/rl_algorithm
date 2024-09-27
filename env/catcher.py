@@ -51,8 +51,8 @@ class CatcherWrapper(Env):
         pass
 
     def render(self, *args, **kwargs):
-        pass
+        """ default return rgb array
+        """
+        rgb_array = self.p.getScreenRGB()
 
-# env = CatcherWrapper()
-# state = env.reset()
-# env.step(1)
+        return rgb_array

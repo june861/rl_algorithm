@@ -20,6 +20,7 @@ from share_func import make_env, clear_folder
 from dqn.trick import lr_decay
 from env.flappy_bird import FlappyBirdWrapper
 from env.catcher import CatcherWrapper
+from share_func import run2gif
 
 parser = argparse.ArgumentParser("DQN Parameter Setting")
 
@@ -29,8 +30,8 @@ parser.add_argument("--env_num",type=int,default=50,help="The number of envs tha
 parser.add_argument("--max_eposide_step", type=int, default=500, help="the max step in one eposide game")
 parser.add_argument("--seed", type=int, default=1, help="random seed")
 # training setting
-parser.add_argument("--max_train_steps", type=int, default=500, help="the max train steps")
-parser.add_argument("--learn_freq", type=int, default=5, help="the q net learning frequency")
+parser.add_argument("--max_train_steps", type=int, default=2000, help="the max train steps")
+parser.add_argument("--learn_freq", type=int, default=10, help="the q net learning frequency")
 parser.add_argument("--evaluate_freq", type=int, default=10, help="evaluate frequency")
 parser.add_argument("--evaluate_times", type=int, default=3, help="evaluate times in one evaluation eposide")
 parser.add_argument("--lr", type=float, default=2e-3, help="learning rate of Deep Q-network")
@@ -38,9 +39,9 @@ parser.add_argument("--gamma", type=float, default=0.9, help="discounted element
 parser.add_argument("--epsilon", type=float, default=0.4,help="The probability of randomly generated actions")
 parser.add_argument("--epsilon_min", type=float, default=1e-3,help="The minimum probability of randomly generated actions")
 parser.add_argument("--epsilon_decay", type=float, default=1e-4)
-parser.add_argument("--batch_size",type=int,default=2048,help="mini batch size to sample from buffer")
-parser.add_argument("--mini_batch_size",type=int,default=128,help="mini batch size to sample from buffer")
-parser.add_argument("--capacity",type=int,default=int(5000 ),help="the capacity of buffer to store data")
+parser.add_argument("--batch_size",type=int,default=4096,help="mini batch size to sample from buffer")
+parser.add_argument("--mini_batch_size",type=int,default=256,help="mini batch size to sample from buffer")
+parser.add_argument("--capacity",type=int,default=int(1e5),help="the capacity of buffer to store data")
 parser.add_argument("--use_lr_decay", type=bool, default=True, help="use learning rate decay")
 parser.add_argument("--update_target", type=int, default=200, help="update target network")
 # network setting
@@ -187,6 +188,10 @@ def main(args):
                         eposide_steps = eval_total_steps / eval_times,
                     )
             eval_total_freq += 1
+    # 测试保存为gif动态图
+    gif_name = f'{args.env_name}_dqn_{int(time.time())}_{os.getpid()}.gif'
+    run2gif(env = eval_env, agent = dqn_agent, gif_name = gif_name)
+
 if __name__ == '__main__':
     args = parser.parse_args()
     main(args = args)
