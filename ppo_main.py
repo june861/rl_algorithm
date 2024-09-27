@@ -179,7 +179,7 @@ def main(args, env_name, number, seed):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for PPO")
-    parser.add_argument("--env_name",type=str,default="CartPole-v1",choices=['CartPole-v1', 'LunarLander-v2'],help="which env to use for testing ppo")
+    parser.add_argument("--env_name",type=str,default="CartPole-v1",help="which env to use for testing ppo")
     parser.add_argument("--max_train_steps", type=int, default=int(500), help=" Maximum number of training steps")
     parser.add_argument("--evaluate_freq", type=int, default=50, help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=50,  help="Save frequency")

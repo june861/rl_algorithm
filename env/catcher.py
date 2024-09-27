@@ -54,5 +54,5 @@ class CatcherWrapper(Env):
         """ default return rgb array
         """
         rgb_array = self.p.getScreenRGB()
-
+        rgb_array = np.rot90(rgb_array, k=-1)
         return rgb_array

@@ -21,7 +21,7 @@ class FlappyBirdWrapper(Env):
     # 如果想把画面渲染出来，就传参display_screen=True
     def __init__(self, **kwargs):
         self.game = FlappyBird()
-        self.p = PLE(self.game, display_screen=True, **kwargs)
+        self.p = PLE(self.game, display_screen=False, **kwargs)
         self.action_set = self.p.getActionSet()
 
         # 3个输入状态：见函数self._get_obs

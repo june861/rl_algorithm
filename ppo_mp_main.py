@@ -17,7 +17,8 @@ from ppo.trick import (
 from ppo.relaybuffer import RelayBuffer
 from ppo_mp.ppo import PPO
 from share_func import clear_folder, make_env, run2gif
-
+from env.flappy_bird import FlappyBirdWrapper
+from env.catcher import CatcherWrapper
 
 def build_ppo_param(args, device):
     ppo_params = {
@@ -52,20 +53,26 @@ def build_ppo_param(args, device):
 
     return ppo_params
 
+def build_env(env_name, env_num, seed):
+    # build envs
+    if env_name == "FlappyBird":
+        eval_env = FlappyBirdWrapper()
+    elif env_name == "Catcher":
+        eval_env = CatcherWrapper()
+    else:
+        eval_env = gym.make(args.env_name, render_mode = 'rgb_array')
+    
+    train_envs = [ make_env(env_name = args.env_name, seed = seed, idx = i, run_name = f'{env_name}_video{i}') for i in range(env_num) ]
+    envs = gym.vector.SyncVectorEnv(train_envs)
+    return eval_env, envs
+
 
 def main(args, number, seed):
     # Set random seed
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    # build envs
-    train_envs = [ make_env(env_name = args.env_name, seed = seed,idx = i, run_name = f'{args.env_name}_video{i}') for i in range(args.env_num) ]
-    if args.use_multiprocess:
-        envs = gym.vector.AsyncVectorEnv(train_envs)
-    else:
-        envs = gym.vector.SyncVectorEnv(train_envs)
-    val_env = gym.make(args.env_name)
-    eval_env = gym.make(args.env_name, render_mode =  "rgb_array")
+    eval_env, envs = build_env(env_name = args.env_name, env_num = args.env_num, seed = seed)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # device = torch.device('cpu')
 
@@ -162,20 +169,20 @@ def main(args, number, seed):
         
 
         if (train_step+1) % args.evaluate_freq == 0:
-            eval_times = 5
+            eval_times = 1
             round_count = 0
             val_reward = 0
             for k in range(eval_times):
                 done = False
                 step = 0
                 episode_reward = 0.0
-                state, _ = val_env.reset()
+                state, _ = eval_env.reset()
                 # val_env.render()
                 while not done:
                     step += 1
                     done = False
                     action, _  = agent.select_action(state, eval_mode = True)  # We use the deterministic policy during the evaluating
-                    state_, reward, done,trun, _ = val_env.step(action.item())
+                    state_, reward, done,trun, _ = eval_env.step(action.item())
                     episode_reward += reward
                     state = state_
                     if step >= 15000:
@@ -194,7 +201,7 @@ def main(args, number, seed):
     agent.save_checkpoint(only_net = False)
     
     # 测试模型并生成gif动态图
-    gif_name = f'{args.env_name}_ppomp_{int(time.time())}_{os.getpid()}.gif'
+    gif_name = f'{args.env_name}_ppo_{int(time.time())}_{os.getpid()}.gif'
     run2gif(eval_env, agent, gif_name)
 
 
@@ -202,12 +209,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser("Hyperparameter Setting for PPO")
     # env variable setting
     parser.add_argument("--env_name",type=str,default="CartPole-v1",help="The Env Name of Gym")
-    parser.add_argument("--env_num",type=int,default=10,help="The number of envs that are activated")
+    parser.add_argument("--env_num",type=int,default=50,help="The number of envs that are activated")
     parser.add_argument("--use_multiprocess",type=bool,default=False,help="use multi-process to generated frame data.")
     # training variable setting
     parser.add_argument("--max_train_steps", type=int, default=2000, help=" Maximum number of training steps")
     parser.add_argument("--per_batch_steps", type=int, default=500, help="max step in a round.")
-    parser.add_argument("--evaluate_freq", type=int, default=50, help="Evaluate the policy every 'evaluate_freq' steps")
+    parser.add_argument("--evaluate_freq", type=int, default=20, help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=20, help="Save frequency")
     parser.add_argument("--batch_size", type=int, default=4096, help="Batch size")
     parser.add_argument("--mini_batch_size", type=int, default=256, help="Minibatch size")
