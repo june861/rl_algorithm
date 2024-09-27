@@ -145,7 +145,9 @@ def run2gif(env, agent, gif_name):
         while not done:
             frames.append(env.render())
             step += 1
-            action, _  = agent.select_action(state, eval_mode = True)  # We use the deterministic policy during the evaluating
+            action = agent.select_action(state, eval_mode = True)  # We use the deterministic policy during the evaluating
+            if isinstance(action, tuple):
+                action = action[0]
             state, reward, done,trun, _ = env.step(action.item())
             if done: 
                 break
