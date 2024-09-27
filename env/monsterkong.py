@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 '''
-@File    :   catcher.py
-@Time    :   2024/09/22 21:44:18
+@File    :   monsterkong.py
+@Time    :   2024/09/27 15:52:31
 @Author  :   junewluo 
 '''
 
@@ -9,15 +9,17 @@ import os
 import numpy as np
 from gym import Env, spaces
 from ple import PLE
-from ple.games import Catcher
+from ple.games import MonsterKong
 
-class CatcherWrapper(Env):
+#TODO(junewluo): fix bug
+class MonsterKongWrapper(Env):
     metadata = {
         'render.mode':['human','rgb_array'],
     }
-    # 如果想把画面渲染出来，就传参display_screen=True
-    def __init__(self, **kwargs):
-        self.game = Catcher()
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__()
+        self.game = MonsterKong()
         self.p = PLE(self.game, **kwargs)
         self.action_set = self.p.getActionSet()
 
@@ -27,24 +29,32 @@ class CatcherWrapper(Env):
         self.action_space = spaces.Discrete(len(self.action_set))
 
     def _get_obs(self):
-        # 获取游戏的状态
-        state = self.game.getGameState()
-        player_x = state['player_x']
-        player_vel = state['player_vel']
-        fruit_x = state['fruit_x']
-        fruit_y = state['fruit_y']
-        # 将这些信息封装成一个数据返回
-        return np.array([player_x, player_vel, fruit_x, fruit_y])
+        states = self.p.getGameState()
+        player_y = states['player_y']
+        player_vel = states['player_vel']
+        player_dist_to_ceil = states['player_dist_to_ceil']
+        player_dist_to_floor = states['player_dist_to_floor']
+        next_gate_dist_to_player = states['next_gate_dist_to_player']
+        next_gate_block_top = states['next_gate_block_top']
+        next_gate_block_bottom = states['next_gate_block_bottom']
+
+        obs = np.array([
+            player_y, player_vel, player_dist_to_ceil, player_dist_to_floor,
+            next_gate_dist_to_player, next_gate_block_top, next_gate_block_bottom
+        ])
+
+        return obs
 
     def reset(self):
         self.p.reset_game()
         return self._get_obs(), dict()
-
+    
     def step(self, action):
         reward = self.p.act(self.action_set[action])
         obs = self._get_obs()
         done = self.p.game_over()
-        return obs, reward, done, False, dict()
+        truncation = False
+        return obs, reward, done, truncation, dict()
 
     def seed(self, *args, **kwargs):
         pass
@@ -53,5 +63,5 @@ class CatcherWrapper(Env):
         """ default return rgb array
         """
         rgb_array = self.p.getScreenRGB()
-        rgb_array = np.rot90(rgb_array, k=-1)
+        rgb_array = np.rot90(rgb_array, k = -1)
         return rgb_array

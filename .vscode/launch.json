@@ -40,7 +40,7 @@
             "args": [
                 "--env_name","FlappyBird",
                 "--evaluate_freq", "1",
-                "--max_train_steps", "100",
+                "--max_train_steps", "10",
                 "--layers","3",
                 "--hidden_dims", "10", "10",
                 "--mini_batch_size", "4"

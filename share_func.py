@@ -11,6 +11,21 @@ import matplotlib.pyplot as plt
 from matplotlib import animation
 from env.flappy_bird import FlappyBirdWrapper
 from env.catcher import CatcherWrapper
+from env.pixelcopter import PixelcopterWrapper
+from env.pong import PongWrapper
+from env.puckworld import PuckWorldWrapper
+from env.raycastmaze import RaycastMazeWrapper
+from env.snake import SnakeWrapper
+from env.waterworld import WaterWorldWrapper
+
+
+ple_games = [
+    "FlappyBird", "Catcher", "Pixelcopter", "Pong", "PuckWorld", "RaycastMaze", "Snake", "WaterWorld"
+]
+ple_games_func = [
+    FlappyBirdWrapper, CatcherWrapper, PixelcopterWrapper, PongWrapper, PuckWorldWrapper, RaycastMazeWrapper, SnakeWrapper, WaterWorldWrapper
+]
+
 
 def clear_folder(folder_path, rm_file = True, rm_dir = True):
     """ remove dirs and files from the folder_path.
@@ -67,14 +82,24 @@ def make_env(env_name, seed, idx, run_name, capture_video = False):
             env.action_space.seed(seed)
             env.observation_space.seed(seed)
             return env
-    elif env_name in ['FlappyBird','Catcher']:
+    elif env_name in ple_games: 
         def chunk():
-            if env_name == 'FlappyBird':
-                env = FlappyBirdWrapper()
-            elif env_name == "Catcher":
-                env = CatcherWrapper()
+            env = ple_games_func[ple_games.index(env_name)]()
             return env
     return chunk
+
+def build_env(env_name, env_num, seed):
+    # build envs
+    if env_name in ple_games:
+        func = ple_games_func[ple_games.index(env_name)]
+        eval_env = func()
+    else:
+        eval_env = gym.make(env_name, render_mode = 'rgb_array')
+    
+    train_envs = [ make_env(env_name = env_name, seed = seed, idx = i, run_name = f'{env_name}_video{i}') for i in range(env_num) ]
+    envs = gym.vector.SyncVectorEnv(train_envs)
+    return eval_env, envs
+
 
 
 def generate_frame_data(env, env_index, agent, lock, relay_buffer, capacity):
@@ -135,7 +160,9 @@ def run2gif(env, agent, gif_name):
     round_count = 0
     last_frames = []
     last_step = 0
-    while round_count <= 20:
+    return_flag = 0
+    max_steps = 50000
+    while round_count <= 5:
         frames = []
         round_count += 1
         state, _ = env.reset()
@@ -149,9 +176,9 @@ def run2gif(env, agent, gif_name):
             if isinstance(action, tuple):
                 action = action[0]
             state, reward, done,trun, _ = env.step(action.item())
-            if done: 
-                break
             episode_reward += reward
+            if done or step > max_steps: 
+                break
         if step > last_step:
             last_frames = frames
             display_frames_as_gif(last_frames, gif_name)

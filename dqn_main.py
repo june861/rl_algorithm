@@ -16,24 +16,22 @@ import warnings
 warnings.filterwarnings("ignore")
 from torch.utils.tensorboard import SummaryWriter
 from dqn.dqn import DQN, RelayBuffer
-from share_func import make_env, clear_folder
+from share_func import build_env, clear_folder
 from dqn.trick import lr_decay
-from env.flappy_bird import FlappyBirdWrapper
-from env.catcher import CatcherWrapper
 from share_func import run2gif
 
 parser = argparse.ArgumentParser("DQN Parameter Setting")
 
 # env setting
 parser.add_argument("--env_name",type=str,default="CartPole-v1",help="The Env Name of Gym")
-parser.add_argument("--env_num",type=int,default=50,help="The number of envs that are activated")
+parser.add_argument("--env_num",type=int,default=20,help="The number of envs that are activated")
 parser.add_argument("--max_eposide_step", type=int, default=500, help="the max step in one eposide game")
 parser.add_argument("--seed", type=int, default=1, help="random seed")
 # training setting
 parser.add_argument("--max_train_steps", type=int, default=2000, help="the max train steps")
 parser.add_argument("--learn_freq", type=int, default=10, help="the q net learning frequency")
 parser.add_argument("--evaluate_freq", type=int, default=10, help="evaluate frequency")
-parser.add_argument("--evaluate_times", type=int, default=3, help="evaluate times in one evaluation eposide")
+parser.add_argument("--evaluate_times", type=int, default=1, help="evaluate times in one evaluation eposide")
 parser.add_argument("--lr", type=float, default=2e-3, help="learning rate of Deep Q-network")
 parser.add_argument("--gamma", type=float, default=0.9, help="discounted element")
 parser.add_argument("--epsilon", type=float, default=0.4,help="The probability of randomly generated actions")
@@ -58,18 +56,7 @@ def write_metric(env_name, use_wandb, use_tensorboard, writer, global_step, **kw
         for key,val in kwargs.items():
             writer.add_scalar(tag = f'{env_name}_{key}', scalar_value = val, global_step = global_step)
 
-def build_env(env_name, env_num, seed):
-    # build envs
-    if env_name == "FlappyBird":
-        eval_env = FlappyBirdWrapper()
-    elif env_name == "Catcher":
-        eval_env = CatcherWrapper()
-    else:
-        eval_env = gym.make(args.env_name, render_mode = 'rgb_array')
-    
-    train_envs = [ make_env(env_name = args.env_name, seed = args.seed, idx = i, run_name = f'{env_name}_video{i}') for i in range(env_num) ]
-    envs = gym.vector.SyncVectorEnv(train_envs)
-    return eval_env, envs
+
 
 def main(args):
     # Set random seed
@@ -83,10 +70,7 @@ def main(args):
 
     # set some useful parameter
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    try:
-        state_dim = eval_env.observation_space.shape[0]
-    except:
-        state_dim = eval_env.observation_space.n
+    state_dim = eval_env.observation_space.shape[0]
     act_dim = eval_env.action_space.n
     layers = args.layers
     hidden_dims = args.hidden_dims if args.hidden_dims else []
