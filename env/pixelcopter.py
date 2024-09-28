@@ -30,10 +30,14 @@ class PixelcopterWrapper(Env):
     def _get_obs(self):
         states = self.p.getGameState()
 
+        # player location
         player_y = states['player_y']
+        # player velocity
         player_vel = states['player_vel']
+        # dist to ceil or floor
         player_dist_to_ceil = states['player_dist_to_ceil']
         player_dist_to_floor = states['player_dist_to_floor']
+        # the distance between player and next gate.
         next_gate_dist_to_player = states['next_gate_dist_to_player']
         next_gate_block_top = states['next_gate_block_top']
         next_gate_block_bottom = states['next_gate_block_bottom']

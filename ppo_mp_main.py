@@ -16,7 +16,7 @@ from ppo.trick import (
 )
 from ppo.relaybuffer import RelayBuffer
 from ppo_mp.ppo import PPO
-from share_func import clear_folder, make_env, run2gif
+from share_func import clear_folder, build_env, run2gif
 from env.flappy_bird import FlappyBirdWrapper
 from env.catcher import CatcherWrapper
 
@@ -52,19 +52,6 @@ def build_ppo_param(args, device):
     }
 
     return ppo_params
-
-def build_env(env_name, env_num, seed):
-    # build envs
-    if env_name == "FlappyBird":
-        eval_env = FlappyBirdWrapper()
-    elif env_name == "Catcher":
-        eval_env = CatcherWrapper()
-    else:
-        eval_env = gym.make(args.env_name, render_mode = 'rgb_array')
-    
-    train_envs = [ make_env(env_name = args.env_name, seed = seed, idx = i, run_name = f'{env_name}_video{i}') for i in range(env_num) ]
-    envs = gym.vector.SyncVectorEnv(train_envs)
-    return eval_env, envs
 
 
 def main(args, number, seed):
@@ -217,7 +204,7 @@ if __name__ == '__main__':
     parser.add_argument("--evaluate_freq", type=int, default=20, help="Evaluate the policy every 'evaluate_freq' steps")
     parser.add_argument("--save_freq", type=int, default=20, help="Save frequency")
     parser.add_argument("--batch_size", type=int, default=4096, help="Batch size")
-    parser.add_argument("--mini_batch_size", type=int, default=256, help="Minibatch size")
+    parser.add_argument("--mini_batch_size", type=int, default=512, help="Minibatch size")
     parser.add_argument("--hidden_width", type=int, default=64, help="The number of neurons in hidden layers of the neural network")
     parser.add_argument("--lr_a", type=float, default=1e-3, help="Learning rate of actor")
     parser.add_argument("--lr_c", type=float, default=1e-4, help="Learning rate of critic")

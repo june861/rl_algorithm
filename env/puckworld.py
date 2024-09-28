@@ -28,6 +28,7 @@ class PuckWorldWrapper(Env):
 
     def _get_obs(self):
         states = self.p.getGameState()
+
         # {
         #     'player_x': 4.5,
         #     'player_y': 4.5,

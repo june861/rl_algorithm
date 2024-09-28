@@ -94,11 +94,13 @@ def main(args):
 
     # init monitor tools
     if args.wandb:
+        print("use wandb : ",args.wandb)
         now_time = datetime.datetime.now().strftime("%Y-%m-%d")
-        name = f'dqn_train_{now_time}_{os.getpid()}_{int(time.time())}'
-        wandb.init(projetc = 'dqn_train', name = name)
+        name = f'dqn_train_{now_time}_{os.getpid()}'
+        wandb.init(project = 'dqn_train', name = name)
     
     if args.tensorboard:
+        print("use tensorboard : ", args.tensorboard)
         log_dir = f'./runs/DQN_{args.env_name}_{os.getpid()}_{int(time.time())}'
         clear_folder(log_dir)
         writer = SummaryWriter(log_dir = log_dir)
@@ -179,5 +181,3 @@ def main(args):
 if __name__ == '__main__':
     args = parser.parse_args()
     main(args = args)
-
-
