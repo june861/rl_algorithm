@@ -149,8 +149,6 @@ def display_frames_as_gif(frames, gif_name):
     plt.axis("off")
     def animate(i):
         patch.set_data(frames[i])
-    # 6s内播放完gif
-    fps = len(frames) // 6
     anim = animation.FuncAnimation(plt.gcf(), animate, frames = len(frames), interval = 5)
     anim.save(os.path.join("./gifs/",gif_name), writer="pillow", fps = 120)
 
@@ -160,8 +158,8 @@ def run2gif(env, agent, gif_name):
     round_count = 0
     last_frames = []
     last_step = 0
-    return_flag = 0
     max_steps = 50000
+    
     while round_count <= 5:
         frames = []
         round_count += 1
@@ -183,6 +181,8 @@ def run2gif(env, agent, gif_name):
             last_frames = frames
             display_frames_as_gif(last_frames, gif_name)
             last_step = step
+        # 释放内存
+        del frames
         print(f'round{round_count}: total step is {step}, total reward is {episode_reward}')
     
 

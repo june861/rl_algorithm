@@ -77,6 +77,8 @@ class Actor(nn.Module):
     def forward(self,state):
         """ actor网络输出动作的概率 """
         out = self.actor(state)
+        if len(out.shape) == 1:
+            out = out.unsqueeze(0)
         a_prob = torch.softmax(out, dim = 1) 
         return a_prob
 
@@ -141,9 +143,6 @@ class PPO(object):
             'batch_size' : train_params['batch_size'],
             'mini_batch_size' : train_params['mini_batch_size'],
 
-            # trick params
-            'off_policy' : False, # use off-policy or on-policy
-            'use_buffer' : False, # use buffer to store or not
             'use_tanh' : train_params['use_tanh'], # use tanh activate func or ReLU func
             'use_adv_norm' : train_params['use_adv_norm'], # use advantage normalization
             'use_grad_clip' : train_params['use_grad_clip'], # use grad clip in model params.
@@ -158,33 +157,22 @@ class PPO(object):
         
         self.actor = Actor(state_dim = state_dim, act_dim = act_dim, hidden_dims = hidden_dims, use_tanh = self.ppo_params['use_tanh']).to(self.device)
         self.critic = Critic(state_dim = state_dim, act_dim = act_dim, hidden_dims = hidden_dims, use_tanh = self.ppo_params['use_tanh']).to(self.device)
-        # use off-policy
-        if self.ppo_params['off_policy']:
-            self.actor_old = deepcopy(self.actor).to(self.device)
         # define optimizer
         self.actor_optim = optim.AdamW(params = self.actor.parameters(), lr = self.ppo_params['lr_a'])
         self.critic_optim = optim.AdamW(params  = self.critic.parameters(), lr = self.ppo_params['lr_c'])
 
     def select_action(self, state, eval_mode = False):
         """ 选择动作 """
-        state = torch.Tensor(state).to(self.device).unsqueeze(0)
+        state = torch.Tensor(state).to(self.device)
         with torch.no_grad():
-            if self.ppo_params['off_policy'] and eval_mode == False:
-                a_probs = self.actor_old(state).cpu()
-            else:
-                a_probs = self.actor(state).cpu()
+
+            a_probs = self.actor(state).cpu()
             dist = Categorical(probs = a_probs)
             a = dist.sample()
             a_logprobs = dist.log_prob(a)
-        return a.numpy().item(), a_logprobs.numpy().item()
-
+        return a.numpy(), a_logprobs.numpy()
     
-    def update_old_net(self):
-        """ 更新actor_old参数 """
-        if self.ppo_params['off_policy']:
-            self.actor_old.load_state_dict(self.actor.state_dict())
-    
-    def cal_adv(self,states, next_states, rewards, dw, dones):
+    def cal_adv(self,states, next_states, rewards, dones):
         # calculate adavantage functions
 
         adv = []
@@ -208,24 +196,22 @@ class PPO(object):
     def learn(self, replay_buffer, batch_size):
         """ 训练参数 """
 
-        if len(replay_buffer) < batch_size:
-            batch_size = len(replay_buffer)
+        batch_size = min(len(replay_buffer), self.ppo_params['batch_size'])
 
         # 从经验缓冲区中取出数据
-        states, actions, rewards, next_states, a_logprob, dw, dones = replay_buffer.sample()
+        states, actions, rewards, next_states, a_logprob, dones = replay_buffer.sample(batch_size)
         states = torch.Tensor(states).to(self.device)
         actions = torch.Tensor(actions).to(self.device)
         rewards = torch.Tensor(rewards).to(self.device)
         next_states = torch.Tensor(next_states).to(self.device)
         a_logprobs = torch.Tensor(a_logprob).to(self.device)
-        batch_dw = torch.Tensor(dw).to(self.device)
         dones = torch.Tensor(dones).to(self.device)
 
         actor_total_loss, critic_total_loss = 0.0, 0.0
         step = 0
-        advantages, v_targets = self.cal_adv(states = states, next_states = next_states, rewards = rewards, dw = batch_dw, dones = dones)
-        for index in BatchSampler(SubsetRandomSampler(range(self.ppo_params['batch_size'])), self.ppo_params['mini_batch_size'], True):
-            state, next_state, reward, dw, done = states[index], next_states[index], rewards[index], batch_dw[index], dones[index]
+        advantages, v_targets = self.cal_adv(states = states, next_states = next_states, rewards = rewards, dones = dones)
+        for index in BatchSampler(SubsetRandomSampler(range(batch_size)), self.ppo_params['mini_batch_size'], True):
+            state = states[index]
             # state = (state - state.mean()) / (state.std() + 1e-8)
             action, a_logprob = actions[index], a_logprobs[index]                                                                                                    
             # calculate adv

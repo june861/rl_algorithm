@@ -17,22 +17,22 @@ class RelayBuffer(object):
         self.buffer_capacity = buffer_capacity
         self.buffer = []
 
-    def add(self, state, action, reward, next_state, a_logprob, dw,done, must_add = True):
+    def add(self, state, action, reward, next_state, a_logprob, done, must_add = True):
         # action , a_logprob = np.array([action]), np.array([a_logprob])
         # reward, dw, done = np.array([reward]), np.array([dw]), np.array([done])
-        data = (state, action, reward, next_state, a_logprob, dw, done)
+        data = (state, action, reward, next_state, a_logprob, done)
         if len(self.buffer) < self.buffer_capacity:
             self.buffer.append(data)
-            return 1
         # 如果缓冲区溢出
         else:
-            # 数据写入缓冲区失败
-            return 0
+            self.buffer.pop(0)
+            self.buffer.append(data)
 
-    def sample(self):
-        # batch = random.sample(self.buffer, min(len(self.buffer), batch_size))
-        state, action, reward, next_state, a_logprob, dw, done = map(np.array, zip(*self.buffer))
-        return state, action, reward, next_state, a_logprob, dw, done
+
+    def sample(self, batch_size):
+        batch = random.sample(self.buffer, min(len(self.buffer), batch_size))
+        state, action, reward, next_state, a_logprob, done = map(np.array, zip(*batch))
+        return state, action, reward, next_state, a_logprob, done
 
     def clear(self):
         """ 清除缓冲区 """

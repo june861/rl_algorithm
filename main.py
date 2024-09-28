@@ -76,25 +76,37 @@ def build_ppo_script(conf):
     # [--use_state_norm USE_STATE_NORM] [--use_reward_norm USE_REWARD_NORM] [--use_reward_scaling USE_REWARD_SCALING] [--entropy_coef ENTROPY_COEF]      
     # [--use_lr_decay USE_LR_DECAY] [--use_grad_clip USE_GRAD_CLIP] [--use_orthogonal_init USE_ORTHOGONAL_INIT] [--set_adam_eps SET_ADAM_EPS]
     # [--use_tanh USE_TANH] [--use_ppo_clip USE_PPO_CLIP] [--monitor {tensorboard,wandb}]
-    ppo_main_script = os.path.join(os.getcwd(), "ppo_mp_main.py")
+    ppo_main_script = os.path.join(os.getcwd(), "ppo_main.py")
     if not os.path.exists(ppo_main_script):
         raise FileExistsError(f'No such script {ppo_main_script}')
     env_names = conf.get('ENV','env_name').split(',')
+    hidden_dims = conf.get('NETWORK', 'hidden_dims').split(",")
     ppo_start_comms = []
     ppo_conf = conf['PPO']
     for env_name in env_names:
         # add env info
         comm = [
-            'python', 'ppo_mp_main.py',  
+            'python', 'ppo_main.py',  
             '--env_name', env_name, '--env_num', conf.get('ENV', 'env_num'),
+            '--layers', conf.get('NETWORK', 'layers'),
+            '--wandb', str(conf.get('MONITOR','wandb')), 
+            '--tensorboard', str(conf.get('MONITOR','tensorboard'))
         ]
         # add hidden dims
         for key, value in ppo_conf.items():
-            comm.append(key)
+            comm.append(f'--{key}')
             comm.append(value)
+        # 添加隐层维度信息
+        comm.append('--hidden_dims')
+        for dim in hidden_dims:
+            comm.append(dim)
         ppo_start_comms.append(comm)
     
+    
     return ppo_start_comms
+
+ 
+
 
 def build_pg_script(conf):
     pass
@@ -135,7 +147,7 @@ def main(args):
     processes = []
 
     for script in run_commands:
-        print(f'scrip of {script[1]} will be run as:\n {script}')
+        print(f'scrip of {script[1]} will be run as:\n {" ".join(script)}')
         log = f'logs/{script[1]}_{script[3]}.log'
         p = multiprocessing.Process(target = run_script, args=(script,log))
         processes.append(p)

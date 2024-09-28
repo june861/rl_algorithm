@@ -34,9 +34,6 @@ def build_ppo_param(args, device):
             'mini_batch_size': args.mini_batch_size,
 
             # trick params
-
-            'off_policy' : args.use_off_policy, # use off-policy or on-policy
-            'use_buffer' : args.use_buffer, # use buffer to store or not
             "use_ppo_clip":args.use_ppo_clip , # use ppo clip param annealing
             "use_adv_norm" : args.use_adv_norm, # use advantage normalization
             "use_state_norm" : args.use_state_norm, # use state normalization
@@ -65,8 +62,8 @@ def main(args, number, seed):
 
     state_dim = envs.single_observation_space.shape[0]
     action_dim = envs.single_action_space.n
-    layer_nums = 3
-    hidden_dims = [128,128]
+    layer_nums = args.layers
+    hidden_dims = args.hidden_dims
     # args.max_episode_steps = env._max_episode_steps  # Maximum number of steps per episode
     print(f'======== run ppo algorithm =========')
     print("env = {}".format(args.env_name))
@@ -90,11 +87,11 @@ def main(args, number, seed):
                 train_params = ppo_params
             )
     # monitor tools init
-    if args.wandb == True:
+    if args.wandb == 1:
         now_time = datetime.datetime.now().strftime("%Y-%m-%d")
         name = f'{args.env_name}_{now_time}-{os.getpid()}'
         wandb.init(project = f"ppo_train", name  = name)
-    if args.tensorboard:
+    if args.tensorboard == 1:
         # clear dir or make dir
         tensorboard_logdir = 'runs/PPO_mp_{}_seed_{}'.format(args.env_name, number, seed)
         clear_folder(folder_path = tensorboard_logdir)
@@ -149,12 +146,19 @@ def main(args, number, seed):
                             )
             total_steps += 1
             a_loss, c_loss = loss
-            if args.wandb:
+            if args.wandb == 1:
                 wandb.log({'actor_loss': a_loss, 'critic_loss': c_loss})
-            if args.tensorboard:
+            if args.tensorboard == 1:
                 writer.add_scalar(tag = f'train_actor_loss_{args.env_name}', scalar_value = a_loss, global_step = total_steps)
                 writer.add_scalar(tag = f'train_critic_loss_{args.env_name}', scalar_value = c_loss, global_step = total_steps)
-        
+
+        if args.use_lr_decay :
+            cur_lr_a = agent.ppo_params['lr_a']
+            cur_lr_c = agent.ppo_params['lr_c']
+            new_lr_a = lr_decay(agent.actor_optim, cur_step = total_steps, max_step = args.max_train_steps, cur_lr = cur_lr_a)
+            new_lr_c = lr_decay(agent.critic_optim, cur_step = total_steps, max_step = args.max_train_steps, cur_lr = cur_lr_c)
+            agent.ppo_params['lr_a'] = new_lr_a
+            agent.ppo_params['lr_c'] = new_lr_c
 
         if (train_step+1) % args.evaluate_freq == 0:
             eval_times = 1
@@ -178,9 +182,9 @@ def main(args, number, seed):
                 val_reward += episode_reward
                 round_count += step
             print(f'step is {train_step}, validation reward is {val_reward / eval_times}, every round count is {round_count / eval_times}')
-            if args.wandb:
+            if args.wandb == 1:
                 wandb.log({'eval_reward':val_reward / eval_times, "eval_steps": (round_count / eval_times)})
-            if args.tensorboard:
+            if args.tensorboard == 1:
                 writer.add_scalar(tag = f'validation_reward_{args.env_name}', scalar_value = val_reward / eval_times, global_step = evaluate_num)
                 writer.add_scalar(tag = f'validation_rounds_{args.env_name}', scalar_value = round_count / eval_times, global_step = evaluate_num)
             evaluate_num += 1
@@ -199,6 +203,8 @@ if __name__ == '__main__':
     parser.add_argument("--env_name",type=str,default="CartPole-v1",help="The Env Name of Gym")
     parser.add_argument("--env_num",type=int,default=50,help="The number of envs that are activated")
     parser.add_argument("--use_multiprocess",type=bool,default=False,help="use multi-process to generated frame data.")
+    parser.add_argument("--layers", type=int, default=3, help="the number of hidden layers")
+    parser.add_argument("--hidden_dims", type=int, nargs='+', default=[128,128], help="The number of neurons in hidden layers of the neural network")
     # training variable setting
     parser.add_argument("--max_train_steps", type=int, default=2000, help=" Maximum number of training steps")
     parser.add_argument("--per_batch_steps", type=int, default=500, help="max step in a round.")
@@ -213,8 +219,6 @@ if __name__ == '__main__':
     parser.add_argument("--lamda", type=float, default=0.95, help="GAE parameter")
     parser.add_argument("--epsilon", type=float, default=0.2, help="PPO clip parameter")
     # some setting
-    parser.add_argument("--use_off_policy",type=bool,default=False,help="PPO use off-policy or on-policy")
-    parser.add_argument("--use_buffer",type=bool,default=True,help="use buffer to store frame datas")
     parser.add_argument("--use_gae",type=bool,default=True,help="whether use gae function to cal adv")
     parser.add_argument("--grad_clip_param",type=float,default=0.5,help="parameters for model grad clip")
     # training trcik setting
@@ -227,12 +231,12 @@ if __name__ == '__main__':
     parser.add_argument("--use_lr_decay", type=bool, default=True, help="Trick 6:learning rate Decay")
     parser.add_argument("--use_grad_clip", type=bool, default=True, help="Trick 7: Gradient clip")
     parser.add_argument("--use_orthogonal_init", type=bool, default=True, help="Trick 8: orthogonal initialization")
-    parser.add_argument("--set_adam_eps", type=float, default=True, help="Trick 9: set Adam epsilon=1e-5")
-    parser.add_argument("--use_tanh", type=float, default=True, help="Trick 10: tanh activation function")
+    parser.add_argument("--set_adam_eps", type=float, default=1e-5, help="Trick 9: set Adam epsilon=1e-5")
+    parser.add_argument("--use_tanh", type=bool, default=True, help="Trick 10: tanh activation function")
     parser.add_argument("--use_ppo_clip",type=bool,default=True,help="Trick 11: use ppo param to clip")
     # monitor setting
-    parser.add_argument("--wandb", type=bool, default=False, help="use wandb to monitor train process")
-    parser.add_argument("--tensorboard", type=bool, default=False, help="use tensorboard to monitor training process")
+    parser.add_argument("--wandb", type=int, default=0, help="use wandb to monitor train process")
+    parser.add_argument("--tensorboard", type=int, default=0, help="use tensorboard to monitor training process")
 
     args = parser.parse_args()
     main(args, number=1, seed=0)

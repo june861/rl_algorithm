@@ -131,8 +131,6 @@ class PPO(object):
             
 
             # trick params
-            'off_policy' : train_params['off_policy'], # use off-policy or on-policy
-            'use_buffer' : train_params['use_buffer'], # use buffer to store or not
             "use_adv_norm" : train_params['use_adv_norm'], # use advantage normalization
             "use_state_norm" : train_params['use_state_norm'], # use state normalization
             "use_reward_norm" : train_params['use_reward_norm'], # use reward normalization
@@ -152,9 +150,6 @@ class PPO(object):
         
         self.actor = Actor(state_dim = state_dim, act_dim = act_dim, hidden_dims = hidden_dims, use_tanh = self.ppo_params['use_tanh']).to(self.device)
         self.critic = Critic(state_dim = state_dim, act_dim = act_dim, hidden_dims = hidden_dims, use_tanh = self.ppo_params['use_tanh']).to(self.device)
-        # use off-policy
-        if self.ppo_params['off_policy']:
-            self.actor_old = deepcopy(self.actor).to(self.device)
         # define optimizer
         self.actor_optim = optim.AdamW(params = self.actor.parameters(), lr = self.ppo_params['lr_a'])
         self.critic_optim = optim.AdamW(params  = self.critic.parameters(), lr = self.ppo_params['lr_c'])
@@ -175,10 +170,7 @@ class PPO(object):
         if len(state.shape) == 1:
             state = state.unsqueeze(0)
         with torch.no_grad():
-            if self.ppo_params['off_policy'] and eval_mode == False:
-                a_probs = self.actor_old(state).cpu()
-            else:
-                a_probs = self.actor(state).cpu()
+            a_probs = self.actor(state).cpu()
             dist = Categorical(probs = a_probs)
             a = dist.sample()
             a_logprobs = dist.log_prob(a)
@@ -191,11 +183,6 @@ class PPO(object):
         with torch.no_grad():
             value = self.critic(state.to(self.device))
         return value.cpu().numpy()
-    
-    def update_old_net(self):
-        """ 更新actor_old参数 """
-        if self.ppo_params['off_policy']:
-            self.actor_old.load_state_dict(self.actor.state_dict())
     
     def cal_adv(self,obs, next_obs, rewards, dones):
         

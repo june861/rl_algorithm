@@ -40,19 +40,19 @@ parser.add_argument("--epsilon_decay", type=float, default=1e-4)
 parser.add_argument("--batch_size",type=int,default=4096,help="mini batch size to sample from buffer")
 parser.add_argument("--mini_batch_size",type=int,default=256,help="mini batch size to sample from buffer")
 parser.add_argument("--capacity",type=int,default=int(1e5),help="the capacity of buffer to store data")
-parser.add_argument("--use_lr_decay", type=bool, default=True, help="use learning rate decay")
+parser.add_argument("--use_lr_decay", type=int, default=1, help="use learning rate decay")
 parser.add_argument("--update_target", type=int, default=200, help="update target network")
 # network setting
 parser.add_argument("--layers",type=int,default=3,help="the number of layer in q_net")
 parser.add_argument("--hidden_dims", type=int, nargs='+', default=[128, 128], help='Sizes of the hidden layers (e.g., --hidden_sizes 50 30)')
 # monitor setting
-parser.add_argument("--wandb", type=bool, default=False, help="use wandb to monitor train process")
-parser.add_argument("--tensorboard", type=bool, default=False, help="use tensorboard to monitor training process")
+parser.add_argument("--wandb", type=int, default=0, help="use wandb to monitor train process")
+parser.add_argument("--tensorboard", type=int, default=1, help="use tensorboard to monitor training process")
 
 def write_metric(env_name, use_wandb, use_tensorboard, writer, global_step, **kwargs):
-    if use_wandb:
+    if use_wandb == 1:
         wandb.log(kwargs)
-    if use_tensorboard :
+    if use_tensorboard == 1:
         for key,val in kwargs.items():
             writer.add_scalar(tag = f'{env_name}_{key}', scalar_value = val, global_step = global_step)
 
@@ -93,19 +93,17 @@ def main(args):
     relay_buffer.clear()
 
     # init monitor tools
-    if args.wandb:
+    if args.wandb == 1:
         print("use wandb : ",args.wandb)
-        now_time = datetime.datetime.now().strftime("%Y-%m-%d-%s")
+        now_time = datetime.datetime.now().strftime("%Y-%m-%d")
         name = f'{args.env_name}_{now_time}_{os.getpid()}'
         wandb.init(project = 'dqn_train', name = name)
     
-    if args.tensorboard:
+    if args.tensorboard == 1:
         print("use tensorboard : ", args.tensorboard)
         log_dir = f'./runs/DQN_{args.env_name}_{os.getpid()}_{int(time.time())}'
         clear_folder(log_dir)
         writer = SummaryWriter(log_dir = log_dir)
-    else:
-        writer = None
 
     train_total_steps = 0
     eval_total_freq = 0

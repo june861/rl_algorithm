@@ -117,7 +117,7 @@ def lr_decay(optimizer, cur_lr, cur_step, max_step):
         cur_step (int): the current step
         max_step (int): the maximun step
     """
-    lr_now = cur_lr * (1 - cur_step / max_step)
+    lr_now = max(1e-5, cur_lr * (1 - cur_step / max_step))
     for p in optimizer.param_groups:
         p['lr'] = lr_now
     return lr_now
