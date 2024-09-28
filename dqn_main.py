@@ -95,7 +95,7 @@ def main(args):
     # init monitor tools
     if args.wandb:
         print("use wandb : ",args.wandb)
-        now_time = datetime.datetime.now().strftime("%Y-%m-%d")
+        now_time = datetime.datetime.now().strftime("%Y-%m-%d-%s")
         name = f'{args.env_name}_{now_time}_{os.getpid()}'
         wandb.init(project = 'dqn_train', name = name)
     

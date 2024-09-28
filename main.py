@@ -16,7 +16,7 @@ import os
 
 parser = argparse.ArgumentParser("Start the script")
 parser.add_argument("--conf", type=str, default="configure.conf", help="path of configure file")
-parser.add_argument("--algorithms", type=str, nargs='+', default=["dqn"], help="which algorithms to use")
+parser.add_argument("--algorithms", type=str, nargs='+', default=["dqn","ppo"], help="which algorithms to use")
 
 def build_dqn_script(conf):
 
@@ -76,7 +76,7 @@ def build_ppo_script(conf):
     # [--use_state_norm USE_STATE_NORM] [--use_reward_norm USE_REWARD_NORM] [--use_reward_scaling USE_REWARD_SCALING] [--entropy_coef ENTROPY_COEF]      
     # [--use_lr_decay USE_LR_DECAY] [--use_grad_clip USE_GRAD_CLIP] [--use_orthogonal_init USE_ORTHOGONAL_INIT] [--set_adam_eps SET_ADAM_EPS]
     # [--use_tanh USE_TANH] [--use_ppo_clip USE_PPO_CLIP] [--monitor {tensorboard,wandb}]
-    ppo_main_script = os.path.join(os.getcwd(), "dqn_main.py")
+    ppo_main_script = os.path.join(os.getcwd(), "ppo_mp_main.py")
     if not os.path.exists(ppo_main_script):
         raise FileExistsError(f'No such script {ppo_main_script}')
     env_names = conf.get('ENV','env_name').split(',')
@@ -85,7 +85,7 @@ def build_ppo_script(conf):
     for env_name in env_names:
         # add env info
         comm = [
-            'python', 'dqn_main.py',  
+            'python', 'ppo_mp_main.py',  
             '--env_name', env_name, '--env_num', conf.get('ENV', 'env_num'),
         ]
         # add hidden dims
