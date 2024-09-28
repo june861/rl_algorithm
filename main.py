@@ -68,7 +68,33 @@ def build_dqn_script(conf):
     return dqn_start_comms
 
 def build_ppo_script(conf):
-    pass
+    # usage: Hyperparameter Setting for PPO [-h] 
+    # [--env_name ENV_NAME] [--env_num ENV_NUM] [--use_multiprocess USE_MULTIPROCESS] [--max_train_steps MAX_TRAIN_STEPS]                                  
+    # [--per_batch_steps PER_BATCH_STEPS] [--evaluate_freq EVALUATE_FREQ] [--save_freq SAVE_FREQ] [--batch_size BATCH_SIZE]
+    # [--mini_batch_size MINI_BATCH_SIZE] [--hidden_width HIDDEN_WIDTH] [--lr_a LR_A] [--lr_c LR_C] [--gamma GAMMA] [--lamda LAMDA] [--epsilon EPSILON]  
+    # [--use_off_policy USE_OFF_POLICY] [--use_buffer USE_BUFFER] [--use_gae USE_GAE] [--grad_clip_param GRAD_CLIP_PARAM] [--use_adv_norm USE_ADV_NORM]  
+    # [--use_state_norm USE_STATE_NORM] [--use_reward_norm USE_REWARD_NORM] [--use_reward_scaling USE_REWARD_SCALING] [--entropy_coef ENTROPY_COEF]      
+    # [--use_lr_decay USE_LR_DECAY] [--use_grad_clip USE_GRAD_CLIP] [--use_orthogonal_init USE_ORTHOGONAL_INIT] [--set_adam_eps SET_ADAM_EPS]
+    # [--use_tanh USE_TANH] [--use_ppo_clip USE_PPO_CLIP] [--monitor {tensorboard,wandb}]
+    ppo_main_script = os.path.join(os.getcwd(), "dqn_main.py")
+    if not os.path.exists(ppo_main_script):
+        raise FileExistsError(f'No such script {ppo_main_script}')
+    env_names = conf.get('ENV','env_name').split(',')
+    ppo_start_comms = []
+    ppo_conf = conf['PPO']
+    for env_name in env_names:
+        # add env info
+        comm = [
+            'python', 'dqn_main.py',  
+            '--env_name', env_name, '--env_num', conf.get('ENV', 'env_num'),
+        ]
+        # add hidden dims
+        for key, value in ppo_conf.items():
+            comm.append(key)
+            comm.append(value)
+        ppo_start_comms.append(comm)
+    
+    return ppo_start_comms
 
 def build_pg_script(conf):
     pass

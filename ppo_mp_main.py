@@ -2,7 +2,7 @@ import os
 import time
 import torch
 import numpy as np
-import gym
+import datetime
 # import gymnasium as gym
 import argparse
 import wandb
@@ -90,10 +90,11 @@ def main(args, number, seed):
                 train_params = ppo_params
             )
     # monitor tools init
-    if args.monitor == "wandb":
-        name = f'{args.env_name}_mp_{os.getpid()}-{int(time.time())}'
+    if args.wandb == True:
+        now_time = datetime.datetime.now().strftime("%Y-%m-%d")
+        name = f'{args.env_name}_{now_time}-{os.getpid()}'
         wandb.init(project = f"ppo_train", name  = name)
-    else:
+    if args.tensorboard:
         # clear dir or make dir
         tensorboard_logdir = 'runs/PPO_mp_{}_seed_{}'.format(args.env_name, number, seed)
         clear_folder(folder_path = tensorboard_logdir)
@@ -148,9 +149,9 @@ def main(args, number, seed):
                             )
             total_steps += 1
             a_loss, c_loss = loss
-            if args.monitor == "wandb":
+            if args.wandb:
                 wandb.log({'actor_loss': a_loss, 'critic_loss': c_loss})
-            elif args.monitor == "tensorboard":
+            if args.tensorboard:
                 writer.add_scalar(tag = f'train_actor_loss_{args.env_name}', scalar_value = a_loss, global_step = total_steps)
                 writer.add_scalar(tag = f'train_critic_loss_{args.env_name}', scalar_value = c_loss, global_step = total_steps)
         
@@ -177,9 +178,9 @@ def main(args, number, seed):
                 val_reward += episode_reward
                 round_count += step
             print(f'step is {train_step}, validation reward is {val_reward / eval_times}, every round count is {round_count / eval_times}')
-            if args.monitor == "wandb":
+            if args.wandb:
                 wandb.log({'eval_reward':val_reward / eval_times, "eval_steps": (round_count / eval_times)})
-            else:
+            if args.tensorboard:
                 writer.add_scalar(tag = f'validation_reward_{args.env_name}', scalar_value = val_reward / eval_times, global_step = evaluate_num)
                 writer.add_scalar(tag = f'validation_rounds_{args.env_name}', scalar_value = round_count / eval_times, global_step = evaluate_num)
             evaluate_num += 1
@@ -229,8 +230,9 @@ if __name__ == '__main__':
     parser.add_argument("--set_adam_eps", type=float, default=True, help="Trick 9: set Adam epsilon=1e-5")
     parser.add_argument("--use_tanh", type=float, default=True, help="Trick 10: tanh activation function")
     parser.add_argument("--use_ppo_clip",type=bool,default=True,help="Trick 11: use ppo param to clip")
-    # monitor tools setting
-    parser.add_argument("--monitor",type=str,default="tensorboard",choices=["tensorboard","wandb"],help="use Dynamic tools to monitor train process")
+    # monitor setting
+    parser.add_argument("--wandb", type=bool, default=False, help="use wandb to monitor train process")
+    parser.add_argument("--tensorboard", type=bool, default=False, help="use tensorboard to monitor training process")
 
     args = parser.parse_args()
     main(args, number=1, seed=0)

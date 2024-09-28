@@ -47,7 +47,7 @@ parser.add_argument("--layers",type=int,default=3,help="the number of layer in q
 parser.add_argument("--hidden_dims", type=int, nargs='+', default=[128, 128], help='Sizes of the hidden layers (e.g., --hidden_sizes 50 30)')
 # monitor setting
 parser.add_argument("--wandb", type=bool, default=False, help="use wandb to monitor train process")
-parser.add_argument("--tensorboard", type=bool, default=True, help="use tensorboard to monitor training process")
+parser.add_argument("--tensorboard", type=bool, default=False, help="use tensorboard to monitor training process")
 
 def write_metric(env_name, use_wandb, use_tensorboard, writer, global_step, **kwargs):
     if use_wandb:
@@ -96,7 +96,7 @@ def main(args):
     if args.wandb:
         print("use wandb : ",args.wandb)
         now_time = datetime.datetime.now().strftime("%Y-%m-%d")
-        name = f'dqn_train_{now_time}_{os.getpid()}'
+        name = f'{args.env_name}_{now_time}_{os.getpid()}'
         wandb.init(project = 'dqn_train', name = name)
     
     if args.tensorboard:
