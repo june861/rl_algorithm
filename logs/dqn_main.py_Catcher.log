@@ -1,0 +1,13 @@
+usage: DQN Parameter Setting [-h] [--env_name ENV_NAME] [--env_num ENV_NUM]
+                             [--max_eposide_step MAX_EPOSIDE_STEP] [--seed SEED]
+                             [--max_train_steps MAX_TRAIN_STEPS] [--learn_freq LEARN_FREQ]
+                             [--evaluate_freq EVALUATE_FREQ] [--evaluate_times EVALUATE_TIMES]
+                             [--lr LR] [--gamma GAMMA] [--epsilon EPSILON] [--epsilon_min EPSILON_MIN]
+                             [--epsilon_decay EPSILON_DECAY] [--batch_size BATCH_SIZE]
+                             [--mini_batch_size MINI_BATCH_SIZE] [--capacity CAPACITY]
+                             [--use_lr_decay USE_LR_DECAY] [--update_target UPDATE_TARGET]
+                             [--layers LAYERS] [--hidden_dims HIDDEN_DIMS [HIDDEN_DIMS ...]]
+                             [--wandb WANDB] [--tensorboard TENSORBOARD]
+DQN Parameter Setting: error: argument --use_lr_decay: invalid int value: 'True'
+couldn't import doomish
+Couldn't import doom
