@@ -5,6 +5,7 @@
 @Author  :   junewluo 
 '''
 import os
+import wandb
 import gym
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -71,7 +72,12 @@ def make_env(env_name, seed, idx, run_name, capture_video = False):
     Returns:
         _type_: return env .
     """
-    if env_name in ['CartPole-v1', 'LunarLander-v2','BipedalWalker-v3']:
+    if env_name in ple_games: 
+        def chunk():
+            env = ple_games_func[ple_games.index(env_name)]()
+            return env
+    # else env_name in ['CartPole-v1', 'LunarLander-v2','BipedalWalker-v3']:
+    else:
         def chunk():
             env = gym.make(env_name)
             env = gym.wrappers.RecordEpisodeStatistics(env)
@@ -81,10 +87,6 @@ def make_env(env_name, seed, idx, run_name, capture_video = False):
             # env.seed(seed)
             env.action_space.seed(seed)
             env.observation_space.seed(seed)
-            return env
-    elif env_name in ple_games: 
-        def chunk():
-            env = ple_games_func[ple_games.index(env_name)]()
             return env
     return chunk
 
@@ -186,4 +188,9 @@ def run2gif(env, agent, gif_name):
         print(f'round{round_count}: total step is {step}, total reward is {episode_reward}')
     
 
-    
+def write_metric(env_name, use_wandb, use_tensorboard, writer, global_step, **kwargs):
+    if use_wandb == 1:
+        wandb.log(kwargs)
+    if use_tensorboard == 1:
+        for key,val in kwargs.items():
+            writer.add_scalar(tag = f'{env_name}_{key}', scalar_value = val, global_step = global_step)
