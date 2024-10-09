@@ -5,12 +5,28 @@
 @Author  :   junewluo 
 '''
 import os
+import wandb
 import gym
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib import animation
 from env.flappy_bird import FlappyBirdWrapper
 from env.catcher import CatcherWrapper
+from env.pixelcopter import PixelcopterWrapper
+from env.pong import PongWrapper
+from env.puckworld import PuckWorldWrapper
+from env.raycastmaze import RaycastMazeWrapper
+from env.snake import SnakeWrapper
+from env.waterworld import WaterWorldWrapper
+
+
+ple_games = [
+    "FlappyBird", "Catcher", "Pixelcopter", "Pong", "PuckWorld", "RaycastMaze", "Snake", "WaterWorld"
+]
+ple_games_func = [
+    FlappyBirdWrapper, CatcherWrapper, PixelcopterWrapper, PongWrapper, PuckWorldWrapper, RaycastMazeWrapper, SnakeWrapper, WaterWorldWrapper
+]
+
 
 def clear_folder(folder_path, rm_file = True, rm_dir = True):
     """ remove dirs and files from the folder_path.
@@ -56,7 +72,12 @@ def make_env(env_name, seed, idx, run_name, capture_video = False):
     Returns:
         _type_: return env .
     """
-    if env_name in ['CartPole-v1', 'LunarLander-v2','BipedalWalker-v3']:
+    if env_name in ple_games: 
+        def chunk():
+            env = ple_games_func[ple_games.index(env_name)]()
+            return env
+    # else env_name in ['CartPole-v1', 'LunarLander-v2','BipedalWalker-v3']:
+    else:
         def chunk():
             env = gym.make(env_name)
             env = gym.wrappers.RecordEpisodeStatistics(env)
@@ -67,14 +88,20 @@ def make_env(env_name, seed, idx, run_name, capture_video = False):
             env.action_space.seed(seed)
             env.observation_space.seed(seed)
             return env
-    elif env_name in ['FlappyBird','Catcher']:
-        def chunk():
-            if env_name == 'FlappyBird':
-                env = FlappyBirdWrapper()
-            elif env_name == "Catcher":
-                env = CatcherWrapper()
-            return env
     return chunk
+
+def build_env(env_name, env_num, seed):
+    # build envs
+    if env_name in ple_games:
+        func = ple_games_func[ple_games.index(env_name)]
+        eval_env = func()
+    else:
+        eval_env = gym.make(env_name, render_mode = 'rgb_array')
+    
+    train_envs = [ make_env(env_name = env_name, seed = seed, idx = i, run_name = f'{env_name}_video{i}') for i in range(env_num) ]
+    envs = gym.vector.SyncVectorEnv(train_envs)
+    return eval_env, envs
+
 
 
 def generate_frame_data(env, env_index, agent, lock, relay_buffer, capacity):
@@ -124,8 +151,6 @@ def display_frames_as_gif(frames, gif_name):
     plt.axis("off")
     def animate(i):
         patch.set_data(frames[i])
-    # 6s内播放完gif
-    fps = len(frames) // 6
     anim = animation.FuncAnimation(plt.gcf(), animate, frames = len(frames), interval = 5)
     anim.save(os.path.join("./gifs/",gif_name), writer="pillow", fps = 120)
 
@@ -135,7 +160,9 @@ def run2gif(env, agent, gif_name):
     round_count = 0
     last_frames = []
     last_step = 0
-    while round_count <= 20:
+    max_steps = 50000
+    
+    while round_count <= 5:
         frames = []
         round_count += 1
         state, _ = env.reset()
@@ -149,14 +176,21 @@ def run2gif(env, agent, gif_name):
             if isinstance(action, tuple):
                 action = action[0]
             state, reward, done,trun, _ = env.step(action.item())
-            if done: 
-                break
             episode_reward += reward
+            if done or step > max_steps: 
+                break
         if step > last_step:
             last_frames = frames
             display_frames_as_gif(last_frames, gif_name)
             last_step = step
+        # 释放内存
+        del frames
         print(f'round{round_count}: total step is {step}, total reward is {episode_reward}')
     
 
-    
+def write_metric(env_name, use_wandb, use_tensorboard, writer, global_step, **kwargs):
+    if use_wandb == 1:
+        wandb.log(kwargs)
+    if use_tensorboard == 1:
+        for key,val in kwargs.items():
+            writer.add_scalar(tag = f'{env_name}_{key}', scalar_value = val, global_step = global_step)

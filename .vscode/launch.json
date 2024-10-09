@@ -25,9 +25,11 @@
             "program": "${workspaceFolder}/ppo_main.py",
             "console": "integratedTerminal",
             "args": [
-
+                "--env_name", "Catcher",
                 "--evaluate_freq", "1",
-                "--max_train_steps", "100"
+                "--max_train_steps", "100",
+                "--wandb", "0",
+                "--tensorboard", "0",
             ]
         },
 
@@ -38,13 +40,28 @@
             "program": "${workspaceFolder}/dqn_main.py",
             "console": "integratedTerminal",
             "args": [
-                "--env_name","FlappyBird",
+                "--env_name","Catcher",
+                "--wandb", "0",
                 "--evaluate_freq", "1",
-                "--max_train_steps", "100",
+                "--max_train_steps", "10",
                 "--layers","3",
                 "--hidden_dims", "10", "10",
                 "--mini_batch_size", "4"
             ]
-        }
+        },
+
+        {
+            "name": "Python Run: ddpg_main",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/ddpg_main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--batch_size", "8",
+                "--evaluate_freq", "1",
+                "--max_train_steps", "10",
+                "--mini_batch_size", "4"
+            ]
+        },
     ]
 }

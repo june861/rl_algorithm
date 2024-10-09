@@ -11,7 +11,6 @@ from gym import Env, spaces
 from ple import PLE
 from ple.games import Catcher
 
-#TODO(junewluo) 2024/09/23 Need to Finish
 class CatcherWrapper(Env):
     metadata = {
         'render.mode':['human','rgb_array'],
@@ -54,5 +53,5 @@ class CatcherWrapper(Env):
         """ default return rgb array
         """
         rgb_array = self.p.getScreenRGB()
-
+        rgb_array = np.rot90(rgb_array, k=-1)
         return rgb_array

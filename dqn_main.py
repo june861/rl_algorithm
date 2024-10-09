@@ -6,7 +6,6 @@
 '''
 import argparse
 import torch
-import gym
 import os
 import time
 import wandb
@@ -16,24 +15,22 @@ import warnings
 warnings.filterwarnings("ignore")
 from torch.utils.tensorboard import SummaryWriter
 from dqn.dqn import DQN, RelayBuffer
-from share_func import make_env, clear_folder
+from share_func import build_env, clear_folder
 from dqn.trick import lr_decay
-from env.flappy_bird import FlappyBirdWrapper
-from env.catcher import CatcherWrapper
-from share_func import run2gif
+from share_func import run2gif, write_metric
 
 parser = argparse.ArgumentParser("DQN Parameter Setting")
 
 # env setting
 parser.add_argument("--env_name",type=str,default="CartPole-v1",help="The Env Name of Gym")
-parser.add_argument("--env_num",type=int,default=50,help="The number of envs that are activated")
+parser.add_argument("--env_num",type=int,default=20,help="The number of envs that are activated")
 parser.add_argument("--max_eposide_step", type=int, default=500, help="the max step in one eposide game")
 parser.add_argument("--seed", type=int, default=1, help="random seed")
 # training setting
 parser.add_argument("--max_train_steps", type=int, default=2000, help="the max train steps")
 parser.add_argument("--learn_freq", type=int, default=10, help="the q net learning frequency")
 parser.add_argument("--evaluate_freq", type=int, default=10, help="evaluate frequency")
-parser.add_argument("--evaluate_times", type=int, default=3, help="evaluate times in one evaluation eposide")
+parser.add_argument("--evaluate_times", type=int, default=1, help="evaluate times in one evaluation eposide")
 parser.add_argument("--lr", type=float, default=2e-3, help="learning rate of Deep Q-network")
 parser.add_argument("--gamma", type=float, default=0.9, help="discounted element")
 parser.add_argument("--epsilon", type=float, default=0.4,help="The probability of randomly generated actions")
@@ -42,34 +39,16 @@ parser.add_argument("--epsilon_decay", type=float, default=1e-4)
 parser.add_argument("--batch_size",type=int,default=4096,help="mini batch size to sample from buffer")
 parser.add_argument("--mini_batch_size",type=int,default=256,help="mini batch size to sample from buffer")
 parser.add_argument("--capacity",type=int,default=int(1e5),help="the capacity of buffer to store data")
-parser.add_argument("--use_lr_decay", type=bool, default=True, help="use learning rate decay")
+parser.add_argument("--use_lr_decay", type=int, default=1, help="use learning rate decay")
 parser.add_argument("--update_target", type=int, default=200, help="update target network")
 # network setting
 parser.add_argument("--layers",type=int,default=3,help="the number of layer in q_net")
 parser.add_argument("--hidden_dims", type=int, nargs='+', default=[128, 128], help='Sizes of the hidden layers (e.g., --hidden_sizes 50 30)')
 # monitor setting
-parser.add_argument("--wandb", type=bool, default=False, help="use wandb to monitor train process")
-parser.add_argument("--tensorboard", type=bool, default=True, help="use tensorboard to monitor training process")
+parser.add_argument("--wandb", type=int, default=0, help="use wandb to monitor train process")
+parser.add_argument("--tensorboard", type=int, default=1, help="use tensorboard to monitor training process")
 
-def write_metric(env_name, use_wandb, use_tensorboard, writer, global_step, **kwargs):
-    if use_wandb:
-        wandb.log(kwargs)
-    if use_tensorboard :
-        for key,val in kwargs.items():
-            writer.add_scalar(tag = f'{env_name}_{key}', scalar_value = val, global_step = global_step)
 
-def build_env(env_name, env_num, seed):
-    # build envs
-    if env_name == "FlappyBird":
-        eval_env = FlappyBirdWrapper()
-    elif env_name == "Catcher":
-        eval_env = CatcherWrapper()
-    else:
-        eval_env = gym.make(args.env_name, render_mode = 'rgb_array')
-    
-    train_envs = [ make_env(env_name = args.env_name, seed = args.seed, idx = i, run_name = f'{env_name}_video{i}') for i in range(env_num) ]
-    envs = gym.vector.SyncVectorEnv(train_envs)
-    return eval_env, envs
 
 def main(args):
     # Set random seed
@@ -83,10 +62,7 @@ def main(args):
 
     # set some useful parameter
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    try:
-        state_dim = eval_env.observation_space.shape[0]
-    except:
-        state_dim = eval_env.observation_space.n
+    state_dim = eval_env.observation_space.shape[0]
     act_dim = eval_env.action_space.n
     layers = args.layers
     hidden_dims = args.hidden_dims if args.hidden_dims else []
@@ -109,17 +85,17 @@ def main(args):
     relay_buffer.clear()
 
     # init monitor tools
-    if args.wandb:
+    if args.wandb == 1:
+        print("use wandb : ",args.wandb)
         now_time = datetime.datetime.now().strftime("%Y-%m-%d")
-        name = f'dqn_train_{now_time}_{os.getpid()}_{int(time.time())}'
-        wandb.init(projetc = 'dqn_train', name = name)
+        name = f'{args.env_name}_{now_time}_{os.getpid()}'
+        wandb.init(project = 'dqn_train', name = name)
     
-    if args.tensorboard:
+    if args.tensorboard == 1:
+        print("use tensorboard : ", args.tensorboard)
         log_dir = f'./runs/DQN_{args.env_name}_{os.getpid()}_{int(time.time())}'
         clear_folder(log_dir)
         writer = SummaryWriter(log_dir = log_dir)
-    else:
-        writer = None
 
     train_total_steps = 0
     eval_total_freq = 0
@@ -195,5 +171,3 @@ def main(args):
 if __name__ == '__main__':
     args = parser.parse_args()
     main(args = args)
-
-
