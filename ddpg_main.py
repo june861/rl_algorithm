@@ -31,11 +31,11 @@ parser.add_argument("--seed", type=int, default=1, help="random seed")
 parser.add_argument("--max_train_steps", type=int, default=200, help="the max train steps")
 parser.add_argument("--evaluate_freq", type=int, default=200, help="evaluate frequency")
 parser.add_argument("--evaluate_times", type=int, default=1, help="evaluate times in one evaluation eposide")
-parser.add_argument("--lr_a", type=float, default=2e-3, help="learning rate of Actor")
+parser.add_argument("--lr_a", type=float, default=5e-3, help="learning rate of Actor")
 parser.add_argument("--lr_c", type=float, default=5e-4, help="learning rate of Critic")
 parser.add_argument("--gamma", type=float, default=0.9, help="discounted element")
 parser.add_argument("--sigma", type=float, default=0.5, help="")
-parser.add_argument("--tau", type=float, default=0.5, help="")
+parser.add_argument("--tau", type=float, default=0.4, help="")
 parser.add_argument("--noise_scale", type=float, default=0.1)
 parser.add_argument("--use_tanh", type=int, default=1)
 parser.add_argument("--batch_size",type=int,default=2048 ,help="mini batch size to sample from buffer")
@@ -118,7 +118,7 @@ def main(args):
                 single_done = done[i]
                 single_action = action[i]
                 replay_buffer.add(single_obs, single_action, single_reward, single_obs_, single_done)
-        print(f'start train, step is {step}')
+        # print(f'start train, step is {step}')
         loss = ddpg_agent.learn(replay_buffer = replay_buffer)
         write_metric(env_name = args.env_name, 
                     use_wandb = args.wandb, 
@@ -131,7 +131,7 @@ def main(args):
                     )
         train_total_steps += 1
         obs = obs_
-        print(f'end train, step is {step}')
+        # print(f'end train, step is {step}')
         if args.use_lr_decay :
             cur_lr_a = ddpg_agent.lr_a
             cur_lr_c = ddpg_agent.lr_c
