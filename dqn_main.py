@@ -18,6 +18,7 @@ from dqn.dqn import DQN, RelayBuffer
 from share_func import build_env, clear_folder
 from dqn.trick import lr_decay
 from share_func import run2gif, write_metric
+from logger.logger import Logger
 
 parser = argparse.ArgumentParser("DQN Parameter Setting")
 
@@ -47,7 +48,8 @@ parser.add_argument("--hidden_dims", type=int, nargs='+', default=[128, 128], he
 # monitor setting
 parser.add_argument("--wandb", type=int, default=0, help="use wandb to monitor train process")
 parser.add_argument("--tensorboard", type=int, default=1, help="use tensorboard to monitor training process")
-
+# output to console
+parser.add_argument("--std_out_console", type=str, default=False, help="log std out to console.")
 
 
 def main(args):
@@ -85,17 +87,30 @@ def main(args):
     relay_buffer.clear()
 
     # init monitor tools
+    now_time = datetime.datetime.now().strftime("%Y-%m-%d")
     if args.wandb == 1:
         print("use wandb : ",args.wandb)
-        now_time = datetime.datetime.now().strftime("%Y-%m-%d")
+        
         name = f'{args.env_name}_{now_time}_{os.getpid()}'
         wandb.init(project = 'dqn_train', name = name)
     
     if args.tensorboard == 1:
         print("use tensorboard : ", args.tensorboard)
-        log_dir = f'./runs/DQN_{args.env_name}_{os.getpid()}_{int(time.time())}'
+        log_dir = f'./runs/DQN_{args.env_name}_{now_time}_{os.getpid()}'
         clear_folder(log_dir)
         writer = SummaryWriter(log_dir = log_dir)
+
+    # init logger
+    if os.path.exists(f'./logs/'):
+        os.mkdir(f'./logs/')
+    log_file = f'./logs/{args.env_name}_dqn_{now_time}_{os.getpid()}'
+    # str to bool
+    if args.std_out_console.lower() == "true":
+        args.std_out_console = True
+    else:
+        args.std_out_console = False
+
+    logger = Logger(log_file = log_file, std_out_console = bool(args.std_out_console))
 
     train_total_steps = 0
     eval_total_freq = 0
@@ -137,9 +152,7 @@ def main(args):
 
         # evaluate process
         if step % args.evaluate_freq == 0:
-            if eval_total_freq == 1:
-                print()
-            print(f'q_net has been trained {train_total_steps} times')
+            logger.info(f'q_net has been trained {train_total_steps} times')
             eval_times = args.evaluate_times
             total_rewards = 0.0
             eval_total_steps = 0
@@ -153,7 +166,7 @@ def main(args):
                     obs = obs_
                     total_rewards += reward
                     eval_total_steps += 1
-            print(f'env:{args.env_name}, eval num is {eval_total_freq}, eposide rewards is {round(total_rewards / eval_times, 2)}, eposide step is {round(eval_total_steps / eval_times, 2)}')
+            logger.info(f'env:{args.env_name}, eval num is {eval_total_freq}, eposide rewards is {round(total_rewards / eval_times, 2)}, eposide step is {round(eval_total_steps / eval_times, 2)}')
             write_metric(
                         env_name = args.env_name, 
                         use_wandb = args.wandb, 
