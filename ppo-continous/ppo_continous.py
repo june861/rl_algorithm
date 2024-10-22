@@ -21,8 +21,6 @@ def check(input):
     output = torch.from_numpy(input) if type(input) == np.ndarray else input
     return output
 
-
-
 def orthogonal_init(layer, gain = 1.0):
     """ orthogonal initialization
 
@@ -175,7 +173,11 @@ class PPO_continous(object):
         self._use_orthogonal_init = args.use_orthogonal_init
         self._ppo_epoch = args.ppo_epoch
         self._lambda = args.lambda_
+        self._gamma = args.gamma
+        self._epsilon = args.epsilon
         self._use_gae = args.use_gae
+        self._use_adv_norm = args.use_adv_norm
+        self._device = args.device
 
 
 
@@ -230,13 +232,20 @@ class PPO_continous(object):
 
         value = self.critic(obs)
         value_ = self.critic(obs_)
-        deltas = rewards + self._lambda * value_ - value
-        # use gae function
-        if self._use_gae:
-            pass
+        gae = 0
+        adv = np.zeros_like(rewards)
+        deltas = rewards + self._gamma * (1 - dones) * value_ - value
+        v_targets = rewards + self._gamma * (1 - dones) * value_
+        for index, (delta, d) in enumerate(zip(reversed(deltas), reversed(dones))):
+            gae = delta + self.gamma * self.lamda * gae * (1.0 - d)
+            adv[index]  = gae
+        if self._use_adv_norm:
+            adv = (adv - adv.mean()) / (adv.std())
+        
+        return adv, v_targets
 
 
-    def data_generator(self, states, actions, rewards, next_states, a_logprobs, dones):
+    def data_generator(self, states, actions, rewards, next_states, a_logprobs, dones, adv, v_targets):
         for indice in BatchSampler(SubsetRandomSampler(range(states.shape[0])), self.ppo_params['mini_batch_size'], False):
             obs = states[indice]
             action = actions[indice]
@@ -244,12 +253,50 @@ class PPO_continous(object):
             obs_ = next_states[indice]
             a_log_prob = a_logprobs[indice]
             done = dones[indice]
+            adv_ = adv[indice]
+            v_target = v_targets[indice]
 
-            yield obs, action, reward, obs_, a_log_prob, done
+            yield obs, action, reward, obs_, a_log_prob, done, adv, v_target
 
-    def update(self, sample,):
-        pass
-    
+    def update(self, sample):
+        states, actions, rewards, next_states, old_a_logprobs, dones, adv, v_targets = sample
+
+        # calculate current policy probs
+        dist = self.actor.get_dist(states)
+        dist_entropy = dist.entropy().sum(1, keepdim=True)
+        a = dist.sample()
+        if self.policy_dist == "Beta":
+            a_logprob = dist.log_prob(a)  # The log probability density of the action
+        else:
+            a = torch.clamp(a, -self.max_action, self.max_action)  # [-max,max]
+            a_logprob = dist.log_prob(a)  # The log probability density of the action
+
+        ratio = torch.exp(a_logprob - old_a_logprobs)
+
+        surr1 = ratio * adv
+        surr2 = torch.clamp(ratio, 1 - self._epsilon, 1 + self._epsilon) * adv
+
+        # policy net update
+        policy_loss = (- torch.min(surr1, surr2) - self.ppo_params['entropy_coef'] * dist_entropy).mean()
+
+        self.actor_optimizer.zero_grad()
+        if self._use_policy_grad_norm:
+            policy_grad_norm = torch.nn.utils.clip_grad_norm_(self.actor.parameters())
+        policy_loss.backward()
+        self.actor_optimizer.step()
+
+        # critic net update
+        v = self.critic(states)
+        critic_loss = nn.functional.mse_loss(v, v_targets)
+        self.critic_optimizer.zero_grad()
+        if self._use_actor_grad_norm:
+            value_grad_norm = torch.nn.utils.clip_grad_norm_(self.critic.parameters())
+        critic_loss.backward()
+        self.critic_optimizer.step()
+
+        return ratio, policy_loss, policy_grad_norm, critic_loss, value_grad_norm, dist_entropy
+
+
 
     def learn(self, replay_buffer):
 
@@ -258,14 +305,46 @@ class PPO_continous(object):
             'policy_loss': 0.0,
             'value_loss' : 0.0,
             'dist_entropy': 0.0,
+            'value_grad_norm': 0.0,
+            'policy_grad_norm':0.0,
         }
 
         for _ in range(self._ppo_epoch):
             states, actions, rewards, next_states, a_logprobs, dones = replay_buffer.rollout(min(self._batch_size, len(replay_buffer)))
-            generators = self.data_generator()
+            adv, v_targets = self.cal_adv(obs = states,
+                                          rewards = rewards,
+                                          obs_ = next_states,
+                                          dones = dones
+                                        )
+            
+            states = check(states).to(self._device)
+            actions = check(actions).to(self._device)
+            rewards = check(rewards).to(self._device)
+            next_states = check(next_states).to(self._device)
+            old_a_logprobs = check(a_logprobs).to(self._device)
+            dones = check(dones).to(self._device)
+            adv = check(adv).to(self._device)
+            v_targets = check(v_targets).to(self._device)
+
+            generators = self.data_generator(states, actions, rewards, next_states, a_logprobs, dones, adv, v_targets)
 
             for sample in generators:
-                pass
+                ratio, policy_loss, policy_grad_norm, value_loss, \
+                    value_grad_norm, dist_entropy = self.update(sample = sample)
+                
+
+                train_info['dist_entropy'] += dist_entropy.mean()
+                train_info['policy_grad_norm'] += policy_grad_norm.mean()
+                train_info['policy_loss'] += policy_loss.mean()
+                train_info['value_grad_norm'] += value_grad_norm.mean()
+                train_info['value_loss'] += value_loss.mean()
+                train_info['ratio'] += ratio.mean()
+        
+        for k,v in train_info:
+            train_info[k] /= self._ppo_epoch
+        
+        return train_info
+
 
         
 
