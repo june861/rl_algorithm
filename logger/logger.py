@@ -2,16 +2,17 @@ import datetime
 import inspect  
 import os  
 import sys  
-  
+
 class Logger:  
     # ANSI color codes  
     RED = '\033[91m'  
+    YELLOW = '\033[93m'  # Yellow color
     ENDC = '\033[0m'  # Reset to default color  
   
-    def __init__(self, log_file=None, std_out_console = False):  
+    def __init__(self, log_file=None, std_out_console=False):  
         self.log_file = log_file
         self.console = std_out_console
-        if self.log_file:  
+        if self.log_file:
             self.file_handler = open(self.log_file, 'a')  
   
     def __del__(self):  
@@ -47,10 +48,19 @@ class Logger:
             self._print_to_console(log_message, color=self.RED)  
         if self.log_file:  
             self.file_handler.write(log_message + '\n')  
-            self.file_handler.flush()  
+            self.file_handler.flush()
   
-# example  
-# if __name__ == "__main__":  
-#     logger = Logger('app.log')  
-#     logger.info("This is an info log message.")  
-#     logger.error("This is an error log message.")  
+    def warning(self, message):  
+        log_message = self._format_message('WARNING', message, inspect.currentframe().f_back)
+        if self.console:
+            self._print_to_console(log_message, color=self.YELLOW)  
+        if self.log_file:  
+            self.file_handler.write(log_message + '\n')  
+            self.file_handler.flush()
+
+# 使用示例
+# if __name__ == "__main__":
+#     logger = Logger(log_file="example.log", std_out_console=True)
+#     logger.info("这是一条普通信息")
+#     logger.warning("这是一条警告信息")
+#     logger.error("这是一条错误信息")

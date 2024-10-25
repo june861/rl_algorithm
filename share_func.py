@@ -157,7 +157,7 @@ def display_frames_as_gif(frames, gif_name):
     anim = animation.FuncAnimation(plt.gcf(), animate, frames = len(frames), interval = 5)
     anim.save(os.path.join("./gifs/",gif_name), writer="pillow", fps = 120)
 
-def run2gif(env, agent, gif_name):
+def run2gif(env, agent, gif_name, generate_times = 5):
     
     # 测试模型
     round_count = 0
@@ -165,7 +165,7 @@ def run2gif(env, agent, gif_name):
     last_step = 0
     max_steps = 50000
     
-    while round_count <= 5:
+    while round_count <= generate_times:
         frames = []
         round_count += 1
         state, _ = env.reset()

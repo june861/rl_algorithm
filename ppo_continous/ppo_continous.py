@@ -18,7 +18,7 @@ from torch.distributions import Beta, Normal
 from torch.utils.data import SubsetRandomSampler, BatchSampler
 
 def check(input):
-    output = torch.from_numpy(input) if type(input) == np.ndarray else input
+    output = torch.Tensor(input) if type(input) == np.ndarray else input
     return output
 
 def orthogonal_init(layer, gain = 1.0):
@@ -34,27 +34,6 @@ def orthogonal_init(layer, gain = 1.0):
     nn.init.orthogonal_(layer.weight, gain = gain)
     nn.init.constant_(layer.bias, 0)
     return None
-
-
-class Replay_Buffer(object):
-    def __init__(self, capacity=1e5):
-        self.capacity = capacity
-        self.buffer = []
-        self.index = 0    
-
-    def add(self, obs, action, reward, obs_, action_log_prob, done):
-        data = (obs, action, reward, obs_, action_log_prob, done)
-        if len(self.buffer) < self.capacity:
-            self.buffer.append(data)
-        else:
-            self.buffer[self.index] = data
-            self.index = self.index % self.capacity
-        
-    
-    def rollout(self, batch_size):
-        batch = random.sample(self.buffer, min(len(self.buffer), batch_size))
-        state, action, reward, next_state, a_logprob, done = map(np.array, zip(*batch))
-        return state, action, reward, next_state, a_logprob, done
 
 
 class ActorBeta(nn.Module):
@@ -101,12 +80,15 @@ class ActorGaussian(nn.Module):
         self.max_action = max_action
         self.layers = []
 
-        input_dims = [obs_dim] + [hidden_dims]
-        output_dims = [hidden_dims] + [act_dim]
-
+        input_dims = [obs_dim] + hidden_dims
+        output_dims = hidden_dims + [act_dim]
+        self.activate_funcs = [nn.ReLU(), nn.Tanh()]
         for index, (in_dim, out_dim) in enumerate(zip(input_dims, output_dims)):
             if index < len(output_dims) - 1:
-                self.layers.append(orthogonal_init(nn.Linear(in_dim, out_dim)) if use_orthogonal_init else nn.Linear(in_dim, out_dim))
+                linear = nn.Linear(in_dim, out_dim)
+                if use_orthogonal_init:
+                    orthogonal_init(linear)
+                self.layers.append(linear)
                 self.layers.append(self.activate_funcs[use_tanh])
 
 
@@ -161,11 +143,11 @@ class PPO_continous(object):
         # define actor-critic structure info
         self._max_action = args.max_action
         self._policy_dist = args.policy_dist
-        self._actor_hidden_dims = args.actor_hidden_dims
+        self._actor_hidden_dims = args.policy_hidden_dims
         self._critic_hidden_dims = args.critic_hidden_dims
-        
+
         # define init & train info
-        self._batch_size = args.bacth_size
+        self._batch_size = args.batch_size
         self._mini_batch_size = args.mini_batch_size
         self._lr_a = args.lr_a
         self._lr_c = args.lr_c
@@ -182,12 +164,12 @@ class PPO_continous(object):
 
 
         # define AC framework
-        self.critic = Critic(state_dim = self._obs_dim, hidden_dims = self._critic_hidden_dims, use_tanh = self._use_tanh)
+        self.critic = Critic(state_dim = self._obs_dim, hidden_dims = self._critic_hidden_dims, use_tanh = self._use_tanh).to(self._device)
         if self._policy_dist == 'Beta':
             self.actor = ActorBeta(obs_dim = self._obs_dim, 
                                    hidden_dims = self._actor_hidden_dims, 
                                    use_orthogonal_init = self._use_orthogonal_init, 
-                                   use_tanh = self._use_tanh)
+                                   use_tanh = self._use_tanh).to(self._device)
         elif self._policy_dist == "Gaussion":
             self.actor = ActorGaussian(obs_dim = self._obs_dim,
                                        hidden_dims = self._actor_hidden_dims,
@@ -214,30 +196,31 @@ class PPO_continous(object):
     @torch.no_grad()
     def selection_action(self, obs):
         obs = check(obs)
-        if self.policy_dist == "Beta":
+        if self._policy_dist == "Beta":
             with torch.no_grad():
                 dist = self.actor.get_dist(obs)
                 a = dist.sample()  # Sample the action according to the probability distribution
+                a = torch.clamp(a, -self._max_action, self._max_action)  # [-max,max]
                 a_logprob = dist.log_prob(a)  # The log probability density of the action
         else:
             with torch.no_grad():
                 dist = self.actor.get_dist(obs)
                 a = dist.sample()  # Sample the action according to the probability distribution
-                a = torch.clamp(a, -self.max_action, self.max_action)  # [-max,max]
+                a = torch.clamp(a, -self._max_action, self._max_action)  # [-max,max]
                 a_logprob = dist.log_prob(a)  # The log probability density of the action
-        return a.numpy().flatten(), a_logprob.numpy().flatten()
+        return a.numpy(), a_logprob.numpy()
 
-    @torch.no_grad()
+
     def cal_adv(self, obs, rewards, obs_, dones):
 
         value = self.critic(obs)
         value_ = self.critic(obs_)
         gae = 0
-        adv = np.zeros_like(rewards)
+        adv = torch.zeros_like(rewards)
         deltas = rewards + self._gamma * (1 - dones) * value_ - value
         v_targets = rewards + self._gamma * (1 - dones) * value_
         for index, (delta, d) in enumerate(zip(reversed(deltas), reversed(dones))):
-            gae = delta + self.gamma * self.lamda * gae * (1.0 - d)
+            gae = delta + self._gamma * self._lambda * gae * (1.0 - d)
             adv[index]  = gae
         if self._use_adv_norm:
             adv = (adv - adv.mean()) / (adv.std())
@@ -246,7 +229,7 @@ class PPO_continous(object):
 
 
     def data_generator(self, states, actions, rewards, next_states, a_logprobs, dones, adv, v_targets):
-        for indice in BatchSampler(SubsetRandomSampler(range(states.shape[0])), self.ppo_params['mini_batch_size'], False):
+        for indice in BatchSampler(SubsetRandomSampler(range(states.shape[0])), self._mini_batch_size, False):
             obs = states[indice]
             action = actions[indice]
             reward = rewards[indice]
@@ -256,7 +239,10 @@ class PPO_continous(object):
             adv_ = adv[indice]
             v_target = v_targets[indice]
 
-            yield obs, action, reward, obs_, a_log_prob, done, adv, v_target
+            obs, action, reward, obs_, a_log_prob, done, adv_, v_target = check(obs).to(self._device), check(action).to(self._device), \
+                                    check(reward).to(self._device), check(obs_).to(self._device), check(a_log_prob).to(self._device), \
+                                    check(done).to(self._device), check(adv_).to(self._device), check(v_target).to(self._device)
+            yield obs, action, reward, obs_, a_log_prob, done, adv_, v_target
 
     def update(self, sample):
         states, actions, rewards, next_states, old_a_logprobs, dones, adv, v_targets = sample
@@ -310,39 +296,44 @@ class PPO_continous(object):
         }
 
         for _ in range(self._ppo_epoch):
-            states, actions, rewards, next_states, a_logprobs, dones = replay_buffer.rollout(min(self._batch_size, len(replay_buffer)))
-            adv, v_targets = self.cal_adv(obs = states,
-                                          rewards = rewards,
-                                          obs_ = next_states,
-                                          dones = dones
-                                        )
-            
-            states = check(states).to(self._device)
-            actions = check(actions).to(self._device)
-            rewards = check(rewards).to(self._device)
-            next_states = check(next_states).to(self._device)
-            old_a_logprobs = check(a_logprobs).to(self._device)
-            dones = check(dones).to(self._device)
-            adv = check(adv).to(self._device)
-            v_targets = check(v_targets).to(self._device)
-
-            generators = self.data_generator(states, actions, rewards, next_states, a_logprobs, dones, adv, v_targets)
+            generators = replay_buffer.rollout(min(self._batch_size, len(replay_buffer)), self._device)
 
             for sample in generators:
-                ratio, policy_loss, policy_grad_norm, value_loss, \
-                    value_grad_norm, dist_entropy = self.update(sample = sample)
+                states, actions, rewards, next_states, a_logprobs, dones = sample
+                # states, actions, rewards, next_states, a_logprobs, dones = \
+                #     check(states), check(actions), check(rewards), check(next_states), check(a_logprobs), check(dones)
+                adv, v_targets = self.cal_adv(obs = states,
+                                            rewards = rewards,
+                                            obs_ = next_states,
+                                            dones = dones
+                                            )
                 
+                states = check(states).to(self._device)
+                actions = check(actions).to(self._device)
+                rewards = check(rewards).to(self._device)
+                next_states = check(next_states).to(self._device)
+                old_a_logprobs = check(a_logprobs).to(self._device)
+                dones = check(dones).to(self._device)
+                adv = check(adv).to(self._device)
+                v_targets = check(v_targets).to(self._device)
 
-                train_info['dist_entropy'] += dist_entropy.mean()
-                train_info['policy_grad_norm'] += policy_grad_norm.mean()
-                train_info['policy_loss'] += policy_loss.mean()
-                train_info['value_grad_norm'] += value_grad_norm.mean()
-                train_info['value_loss'] += value_loss.mean()
-                train_info['ratio'] += ratio.mean()
-        
+                generators = self.data_generator(states, actions, rewards, next_states, old_a_logprobs, dones, adv, v_targets)
+
+                for sample in generators:
+                    ratio, policy_loss, policy_grad_norm, value_loss, \
+                        value_grad_norm, dist_entropy = self.update(sample = sample)
+                    
+
+                    train_info['dist_entropy'] += dist_entropy.mean()
+                    train_info['policy_grad_norm'] += policy_grad_norm.mean()
+                    train_info['policy_loss'] += policy_loss.mean()
+                    train_info['value_grad_norm'] += value_grad_norm.mean()
+                    train_info['value_loss'] += value_loss.mean()
+                    train_info['ratio'] += ratio.mean()
+            
         for k,v in train_info:
             train_info[k] /= self._ppo_epoch
-        
+            
         return train_info
 
 
