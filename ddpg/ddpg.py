@@ -157,7 +157,7 @@ class DDPG(object):
  
 
     @torch.no_grad()
-    def select_action(self, obs):
+    def select_action(self, obs, eval_mode = True):
         obs = torch.Tensor(obs).to(self.device)
         net_out = self.actor(obs)
         # use tanh func to shinrk output to (-1,1)

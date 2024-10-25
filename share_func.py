@@ -27,6 +27,9 @@ ple_games_func = [
     FlappyBirdWrapper, CatcherWrapper, PixelcopterWrapper, PongWrapper, PuckWorldWrapper, RaycastMazeWrapper, SnakeWrapper, WaterWorldWrapper
 ]
 
+def _t2n(input):
+    pass
+
 
 def clear_folder(folder_path, rm_file = True, rm_dir = True):
     """ remove dirs and files from the folder_path.
@@ -175,7 +178,10 @@ def run2gif(env, agent, gif_name):
             action = agent.select_action(state, eval_mode = True)  # We use the deterministic policy during the evaluating
             if isinstance(action, tuple):
                 action = action[0]
-            state, reward, done,trun, _ = env.step(action.item())
+            try:
+                state, reward, done,trun, _ = env.step(action.item())
+            except:
+                state, reward, done,trun, _ = env.step(action)
             episode_reward += reward
             if done or step > max_steps: 
                 break
