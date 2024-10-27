@@ -82,4 +82,4 @@ class ReplayBuffer(object):
     def __len__(self):
         if self.index < self._capacity:
             return self.index + 1
-        return self._capacity
+        return int(self._capacity)

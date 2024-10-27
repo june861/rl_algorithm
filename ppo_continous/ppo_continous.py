@@ -157,8 +157,12 @@ class PPO_continous(object):
         self._lambda = args.lambda_
         self._gamma = args.gamma
         self._epsilon = args.epsilon
+        self._entropy_coef = args.entropy_coef
+        self._use_policy_grad_norm = args.use_policy_grad_norm
+        self._use_value_grad_norm = args.use_value_grad_norm
         self._use_gae = args.use_gae
         self._use_adv_norm = args.use_adv_norm
+        self._max_grad_norm = args.max_grad_norm
         self._device = args.device
 
 
@@ -178,7 +182,10 @@ class PPO_continous(object):
                                        use_tanh = self._use_tanh,
                                        use_orthogonal_init = self._use_orthogonal_init
                                     )
-        
+        # put on the device
+        self.actor = self.actor.to(self._device)
+        self.critic  = self.critic.to(self._device)
+
         # define optimizer 
         self.actor_optimizer = optim.Adam(params = self.actor.parameters(), lr = self._lr_a)
         self.critic_optimizer = optim.Adam(params = self.critic.parameters(), lr = self._lr_c)
@@ -195,7 +202,7 @@ class PPO_continous(object):
 
     @torch.no_grad()
     def selection_action(self, obs):
-        obs = check(obs)
+        obs = check(obs).to(self._device)
         if self._policy_dist == "Beta":
             with torch.no_grad():
                 dist = self.actor.get_dist(obs)
@@ -208,7 +215,7 @@ class PPO_continous(object):
                 a = dist.sample()  # Sample the action according to the probability distribution
                 a = torch.clamp(a, -self._max_action, self._max_action)  # [-max,max]
                 a_logprob = dist.log_prob(a)  # The log probability density of the action
-        return a.numpy(), a_logprob.numpy()
+        return a.cpu().numpy(), a_logprob.cpu().numpy()
 
 
     def cal_adv(self, obs, rewards, obs_, dones):
@@ -251,10 +258,10 @@ class PPO_continous(object):
         dist = self.actor.get_dist(states)
         dist_entropy = dist.entropy().sum(1, keepdim=True)
         a = dist.sample()
-        if self.policy_dist == "Beta":
+        if self._policy_dist == "Beta":
             a_logprob = dist.log_prob(a)  # The log probability density of the action
         else:
-            a = torch.clamp(a, -self.max_action, self.max_action)  # [-max,max]
+            a = torch.clamp(a, -self._max_action, self._max_action)  # [-max,max]
             a_logprob = dist.log_prob(a)  # The log probability density of the action
 
         ratio = torch.exp(a_logprob - old_a_logprobs)
@@ -263,21 +270,23 @@ class PPO_continous(object):
         surr2 = torch.clamp(ratio, 1 - self._epsilon, 1 + self._epsilon) * adv
 
         # policy net update
-        policy_loss = (- torch.min(surr1, surr2) - self.ppo_params['entropy_coef'] * dist_entropy).mean()
+        policy_loss = (- torch.min(surr1, surr2) - self._entropy_coef * dist_entropy).mean()
 
         self.actor_optimizer.zero_grad()
-        if self._use_policy_grad_norm:
-            policy_grad_norm = torch.nn.utils.clip_grad_norm_(self.actor.parameters())
         policy_loss.backward()
+        if self._use_policy_grad_norm:
+            policy_grad_norm = torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self._max_grad_norm)
         self.actor_optimizer.step()
 
         # critic net update
         v = self.critic(states)
+        v_ = self.critic(next_states)
+        v_targets = rewards + self._gamma * (1 - dones) * v_
         critic_loss = nn.functional.mse_loss(v, v_targets)
         self.critic_optimizer.zero_grad()
-        if self._use_actor_grad_norm:
-            value_grad_norm = torch.nn.utils.clip_grad_norm_(self.critic.parameters())
         critic_loss.backward()
+        if self._use_value_grad_norm:
+            value_grad_norm = torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self._max_grad_norm)
         self.critic_optimizer.step()
 
         return ratio, policy_loss, policy_grad_norm, critic_loss, value_grad_norm, dist_entropy
@@ -298,8 +307,8 @@ class PPO_continous(object):
         for _ in range(self._ppo_epoch):
             generators = replay_buffer.rollout(min(self._batch_size, len(replay_buffer)), self._device)
 
-            for sample in generators:
-                states, actions, rewards, next_states, a_logprobs, dones = sample
+            for s in generators:
+                states, actions, rewards, next_states, a_logprobs, dones = s
                 # states, actions, rewards, next_states, a_logprobs, dones = \
                 #     check(states), check(actions), check(rewards), check(next_states), check(a_logprobs), check(dones)
                 adv, v_targets = self.cal_adv(obs = states,
@@ -317,21 +326,20 @@ class PPO_continous(object):
                 adv = check(adv).to(self._device)
                 v_targets = check(v_targets).to(self._device)
 
-                generators = self.data_generator(states, actions, rewards, next_states, old_a_logprobs, dones, adv, v_targets)
+                sample = states, actions, rewards, next_states, old_a_logprobs, dones, adv, v_targets
 
-                for sample in generators:
-                    ratio, policy_loss, policy_grad_norm, value_loss, \
-                        value_grad_norm, dist_entropy = self.update(sample = sample)
+                ratio, policy_loss, policy_grad_norm, value_loss, \
+                    value_grad_norm, dist_entropy = self.update(sample = sample)
                     
 
-                    train_info['dist_entropy'] += dist_entropy.mean()
-                    train_info['policy_grad_norm'] += policy_grad_norm.mean()
-                    train_info['policy_loss'] += policy_loss.mean()
-                    train_info['value_grad_norm'] += value_grad_norm.mean()
-                    train_info['value_loss'] += value_loss.mean()
-                    train_info['ratio'] += ratio.mean()
+                train_info['dist_entropy'] += dist_entropy.mean()
+                train_info['policy_grad_norm'] += policy_grad_norm.mean()
+                train_info['policy_loss'] += policy_loss.mean()
+                train_info['value_grad_norm'] += value_grad_norm.mean()
+                train_info['value_loss'] += value_loss.mean()
+                train_info['ratio'] += ratio.mean()
             
-        for k,v in train_info:
+        for k,v in train_info.items():
             train_info[k] /= self._ppo_epoch
             
         return train_info

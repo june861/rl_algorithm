@@ -37,6 +37,7 @@ def script_conf():
     parser.add_argument("--mini_batch_size", type=int, default=256, help="Mini Batch Size")
     parser.add_argument("--capacity", type=int, default=1e4, help="capacity of replay buffer")
     parser.add_argument("--eval_freq", type=int, default=20, help="the evaluation stage in training stage")
+    parser.add_argument("--eval_times", type=int, default=5, help="the eval times")
     parser.add_argument("--max_iter_steps", type=int, default=1000, help="max iteration of training steps")
     parser.add_argument("--ppo_epoch", type=int, default=10, help="the number of iteration for ppo update")
     parser.add_argument("--max_step_per_batch", type=int, default=500, help="")
@@ -44,9 +45,15 @@ def script_conf():
     parser.add_argument("--use_orthogonal_init", action="store_true", default=False)
     parser.add_argument("--lambda_", type=float, default=0.99, help="discounter factor")
     parser.add_argument("--gamma", type=float, default=0.98, help="")
-    parser.add_argument("--epsilon", type=float, help="the weight for dist entropy")
+    parser.add_argument("--epsilon", type=float,default=0.2, help="the weight for dist entropy")
+    parser.add_argument("--entropy_coef", type=float, default=0.02, help="the discout factor of entropy coef")
     parser.add_argument("--use_gae", action="store_true", default=False, help="use gae func to cal ppo adv")
+    parser.add_argument("--use_policy_grad_norm", action = "store_false", default=True, help="use value normalization on policy net")
+    parser.add_argument("--use_value_grad_norm", action="store_false", default= True, help="use grad normalization on value net")
     parser.add_argument("--use_adv_norm", action="store_true", default=True, help="use normalization for advantage")
+    parser.add_argument("--max_grad_norm", type=float, default=0.5, help="the maxinum of gradien")
+
+    # device setting
     parser.add_argument("--use_cuda", action="store_true", default=False, help="use gpu to help accelerating training")
     parser.add_argument("--cuda_rank", type=int, default=0, help="which gpu device used to train")
     parser.add_argument("--use_wandb", action="store_true", default=False)
@@ -95,7 +102,7 @@ def main(args):
         wandb.init(project = f'ppo-continous', name = f"{args.env_name}_{curr_time}")
     else:
         curr_time = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')
-        log_dir = f'{curr_time}_{args.env_name}'
+        log_dir = f'./runs/{curr_time}_{args.env_name}'
         writer = SummaryWriter(log_dir = log_dir)
     
     ppo_agent = PPO_continous(args = args)
@@ -116,7 +123,7 @@ def main(args):
         if args.use_wandb:
             wandb.log(train_info)
         else:
-            for k,v in train_info:
+            for k,v in train_info.items():
                 writer.add_scalar(k,v)
 
 
@@ -124,7 +131,7 @@ def main(args):
             total_eval_reward = 0.0
             for k in range(args.eval_times):
                 obs = interaction(envs, None, True)
-                for _ in range(args.max_step_per_batch):
+                for p in range(args.max_step_per_batch):
                     action, _ = ppo_agent.selection_action(obs)
                     obs_, reward, done, trun = interaction(envs, action)
                     total_eval_reward += reward.mean()
